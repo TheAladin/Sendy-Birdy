@@ -1,0 +1,10 @@
+[project]
+name = "sendy-birdy"
+version = "0.1.0"
+description = "Self-hosted app for sending screenshots, demo videos and notes to clients through private, expiring links."
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.162.0",
+    "pydantic-settings>=2.16.2",
+    "uvicorn[standard]>=0.54.0",
+]
