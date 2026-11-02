@@ -21,6 +21,7 @@ node_modules/
 dist/
 coverage/
 *.tsbuildinfo
+*.log
 playwright-report/
 test-results/
 
