@@ -1,9 +1,19 @@
 """Builds the FastAPI application."""
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
 from app.core.config import Settings, get_settings
+from app.db.session import create_engine, create_sessionmaker
 from app.routers import health
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    yield
+    await app.state.engine.dispose()
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -21,7 +31,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         docs_url="/api/docs",
         redoc_url=None,
         openapi_url="/api/openapi.json",
+        lifespan=lifespan,
     )
     app.state.settings = settings
+    # The engine connects lazily, on the first query, so creating it here is cheap.
+    app.state.engine = create_engine(settings.database_url.get_secret_value())
+    app.state.sessionmaker = create_sessionmaker(app.state.engine)
     app.include_router(health.router, prefix="/api")
     return app

@@ -5,7 +5,7 @@ SHELL := bash
 BACKEND := backend
 FRONTEND := frontend
 
-.PHONY: help install dev dev-api dev-web check fmt
+.PHONY: help install db-setup db-migrate dev dev-api dev-web check fmt
 
 help: ## List available commands
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "} {printf "  make %-10s %s\n", $$1, $$2}'
@@ -20,6 +20,12 @@ install: .env ## Install backend and frontend dependencies
 	sed "s|^SECRET_KEY=$$|SECRET_KEY=$$key|" .env.example > .env
 	@chmod 600 .env
 	@echo "Created .env with a random SECRET_KEY"
+
+db-setup: .env ## Create the PostgreSQL role and databases (asks for your sudo password)
+	./scripts/db-setup.sh
+
+db-migrate: ## Apply database migrations
+	cd $(BACKEND) && uv run alembic upgrade head
 
 dev: ## Run the API and the frontend together (Ctrl+C stops both)
 	@$(MAKE) --no-print-directory -j2 dev-api dev-web

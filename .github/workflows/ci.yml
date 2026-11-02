@@ -19,6 +19,25 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: sendy
+          POSTGRES_PASSWORD: sendy
+          POSTGRES_DB: sendy_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sendy"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
+    env:
+      # Throwaway values for the CI-only database; not secrets.
+      SECRET_KEY: ci-secret-key-that-is-at-least-32-characters
+      DATABASE_URL: postgresql+asyncpg://sendy:sendy@127.0.0.1:5432/sendy_test
+      TEST_DATABASE_URL: postgresql+asyncpg://sendy:sendy@127.0.0.1:5432/sendy_test
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
@@ -28,6 +47,10 @@ jobs:
         run: uv run ruff check --output-format=github
       - name: Check formatting
         run: uv run ruff format --check
+      - name: Apply migrations
+        run: uv run alembic upgrade head
+      - name: Check models match migrations
+        run: uv run alembic check
       - name: Test
         run: uv run pytest --cov
 

@@ -3,7 +3,7 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # This file is backend/app/core/config.py, so the repository root is three levels up.
@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     # Required: signs cookies and tokens. There is deliberately no default.
     secret_key: SecretStr = Field(min_length=32)
 
+    # Required. A secret because it contains the database password.
+    database_url: SecretStr
+
     # Where uploaded media is stored. Kept outside git.
     data_dir: Path = REPO_ROOT / "data"
 
@@ -37,6 +40,13 @@ class Settings(BaseSettings):
 
     # Days to keep access-log entries before they're deleted automatically.
     log_retention_days: int = Field(default=90, gt=0)
+
+    @field_validator("database_url")
+    @classmethod
+    def _require_asyncpg(cls, value: SecretStr) -> SecretStr:
+        if not value.get_secret_value().startswith("postgresql+asyncpg://"):
+            raise ValueError("must start with postgresql+asyncpg://")
+        return value
 
 
 @lru_cache
