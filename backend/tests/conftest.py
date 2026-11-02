@@ -11,11 +11,15 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engin
 
 from app import models  # noqa: F401  (registers every table on Base.metadata)
 from app.core.config import REPO_ROOT, Settings
+from app.core.security import hash_password
 from app.db.base import Base
 from app.db.session import get_session
 from app.main import create_app
+from app.models import User
 
 TEST_SECRET_KEY = "test-secret-key-that-is-at-least-32-chars"
+ADMIN_EMAIL = "admin@example.com"
+ADMIN_PASSWORD = "correct horse battery staple"
 
 
 def _test_database_url() -> str:
@@ -82,5 +86,23 @@ def app(settings: Settings, db_session: AsyncSession) -> FastAPI:
 
 @pytest.fixture
 async def client(app: FastAPI) -> AsyncIterator[AsyncClient]:
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    # Sends the CSRF header on every request, like the real frontend does.
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        # https, because the session cookie is Secure and is never sent over plain http.
+        base_url="https://test",
+        headers={"X-Requested-With": "fetch"},
+    ) as client:
         yield client
+
+
+@pytest.fixture
+async def admin(db_session: AsyncSession) -> User:
+    user = User(
+        email=ADMIN_EMAIL,
+        display_name="Test Admin",
+        password_hash=await hash_password(ADMIN_PASSWORD),
+    )
+    db_session.add(user)
+    await db_session.flush()
+    return user

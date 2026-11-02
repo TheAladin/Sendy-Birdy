@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     # Send cookies over HTTPS only. Browsers treat http://localhost as secure, so this can stay on.
     cookie_secure: bool = True
 
+    # How long a sign-in lasts before you have to log in again.
+    session_days: int = Field(default=7, gt=0)
+
     # Largest accepted upload, in megabytes.
     max_upload_mb: int = Field(default=1024, gt=0)
 

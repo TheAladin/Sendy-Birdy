@@ -6,8 +6,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.core.config import Settings, get_settings
+from app.core.csrf import require_csrf_header
 from app.db.session import create_engine, create_sessionmaker
-from app.routers import health
+from app.routers import auth, health
 
 
 @asynccontextmanager
@@ -37,5 +38,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # The engine connects lazily, on the first query, so creating it here is cheap.
     app.state.engine = create_engine(settings.database_url.get_secret_value())
     app.state.sessionmaker = create_sessionmaker(app.state.engine)
+    app.middleware("http")(require_csrf_header)
     app.include_router(health.router, prefix="/api")
+    app.include_router(auth.router, prefix="/api")
     return app
