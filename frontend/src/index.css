@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+
+  /* Components use brand-*, so the accent can be changed here without touching them. */
+  --color-brand-50: var(--color-sky-50);
+  --color-brand-100: var(--color-sky-100);
+  --color-brand-200: var(--color-sky-200);
+  --color-brand-300: var(--color-sky-300);
+  --color-brand-400: var(--color-sky-400);
+  --color-brand-500: var(--color-sky-500);
+  --color-brand-600: var(--color-sky-600);
+  --color-brand-700: var(--color-sky-700);
+  --color-brand-800: var(--color-sky-800);
+  --color-brand-900: var(--color-sky-900);
+  --color-brand-950: var(--color-sky-950);
+
+  --radius-control: 0.5rem;
+  --radius-card: 0.875rem;
+
+  --shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.04), 0 4px 16px -4px rgb(0 0 0 / 0.08);
+}
+
+@layer base {
+  html {
+    @apply bg-zinc-50 text-zinc-900 antialiased dark:bg-zinc-950 dark:text-zinc-100;
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-brand-500;
+  }
+}
