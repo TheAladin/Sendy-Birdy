@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=REPO_ROOT / ".env",
         env_file_encoding="utf-8",
-        # Treat `KEY=` as unset, so an unfilled SECRET_KEY reports "missing" rather than "too short".
+        # `KEY=` counts as unset, so a blank SECRET_KEY reports "missing", not "too short".
         env_ignore_empty=True,
         # Other tools may keep their own variables in .env; don't fail on them.
         extra="ignore",
