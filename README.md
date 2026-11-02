@@ -4,50 +4,29 @@ A self-hosted app for sending screenshots, demo videos and notes to clients thro
 
 > **Work in progress.**
 
-## Run the backend (development)
+## Quick start
 
-Requires [uv](https://docs.astral.sh/uv/).
-
-```bash
-cp .env.example .env    # then set SECRET_KEY (the file explains how)
-cd backend
-uv sync
-uv run uvicorn app.main:create_app --factory --reload
-```
-
-Check it's running at <http://127.0.0.1:8000/api/health>. API docs are at <http://127.0.0.1:8000/api/docs>.
-
-## Run the frontend (development)
-
-Requires Node.js 22.12 or newer (an LTS release). With the backend running:
+Requires [uv](https://docs.astral.sh/uv/), Node.js 22.12 or newer (an LTS release) and `make`.
 
 ```bash
-cd frontend
-npm install
-npm run dev
+make install    # installs dependencies and creates .env with a random SECRET_KEY
+make dev        # runs the API and the frontend together; Ctrl+C stops both
 ```
 
-Open <http://localhost:5173>. Requests to `/api` are forwarded to the backend, so the page shows "API: ok".
+Open <http://localhost:5173>. The page shows "API: ok" once the backend is up. API docs are at <http://127.0.0.1:8000/api/docs>.
 
-## Tests and linting
+## Commands
 
-Backend, from `backend/`:
+| Command | What it does |
+|---|---|
+| `make install` | Install backend and frontend dependencies; create `.env` if it doesn't exist |
+| `make dev` | Run the API (port 8000) and the frontend (port 5173) together |
+| `make dev-api` / `make dev-web` | Run only one of them |
+| `make check` | Run every linter, type check and test |
+| `make fmt` | Fix lint issues where possible and format all code |
 
-```bash
-uv run pytest           # tests (add --cov for a coverage report)
-uv run ruff check       # lint
-uv run ruff format      # format
-```
-
-Frontend, from `frontend/`:
-
-```bash
-npm test                # tests
-npm run lint            # lint
-npm run typecheck       # type check
-npm run format          # format
-```
+Run `make` on its own to list them.
 
 ## License
 
-[MIT](LICENSE)00
+[MIT](LICENSE)
