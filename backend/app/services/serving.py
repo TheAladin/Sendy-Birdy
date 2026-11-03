@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 # If a file URL is opened directly, nothing in it may run or load anything.
 FILE_SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",
-    "Content-Security-Policy": "default-src 'none'; sandbox",
+    "Content-Security-Policy": "default-src 'none'; sandbox; frame-ancestors 'none'",
 }
 
 

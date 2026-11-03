@@ -15,6 +15,16 @@ const components: Components = {
     ) : (
       <span>{children}</span>
     ),
+  // Pictures in a note would load from another site the moment a client opens the link (the
+  // page's CSP blocks that anyway), so they become links the reader can choose to follow.
+  img: ({ src, alt }) =>
+    typeof src === "string" && src ? (
+      <a href={src} target="_blank" rel="noopener noreferrer">
+        {alt || src}
+      </a>
+    ) : (
+      <span>{alt}</span>
+    ),
 };
 
 /**

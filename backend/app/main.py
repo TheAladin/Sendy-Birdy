@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from app.core.config import Settings, get_settings
 from app.core.csrf import require_csrf_header
 from app.core.frontend import SHARE_PAGES, mount_frontend
+from app.core.headers import SecurityHeaders
 from app.core.limits import LimitJsonBody
 from app.core.public import add_public_headers
 from app.core.ratelimit import RateLimits
@@ -59,6 +60,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.middleware("http")(require_csrf_header)
     app.middleware("http")(add_public_headers)
     app.add_middleware(LimitJsonBody)
+    # Added last, so it runs outermost: even a refused request (403, 413) gets the headers.
+    app.add_middleware(SecurityHeaders)
     # Admin routes aren't hidden in public mode, they're never added: nothing to misconfigure.
     if admin:
         app.include_router(health.router, prefix="/api")

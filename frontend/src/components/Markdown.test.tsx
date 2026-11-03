@@ -44,3 +44,25 @@ test("javascript: links are neutralized and real links open safely in a new tab"
   expect(site).toHaveAttribute("target", "_blank");
   expect(site).toHaveAttribute("rel", "noopener noreferrer");
 });
+
+test("images become links, so opening a note never loads anything from another site", () => {
+  const { container } = render(
+    <Markdown>
+      {"![Mockup](https://example.com/mockup.png) ![](https://example.com/b.png)"}
+    </Markdown>,
+  );
+
+  expect(container.querySelector("img")).toBeNull();
+  const mockup = screen.getByRole("link", { name: "Mockup" });
+  expect(mockup).toHaveAttribute("href", "https://example.com/mockup.png");
+  expect(mockup).toHaveAttribute("rel", "noopener noreferrer");
+  // Without alt text, the address itself is the label.
+  expect(screen.getByRole("link", { name: "https://example.com/b.png" })).toBeInTheDocument();
+});
+
+test("unsafe image addresses leave only the alt text", () => {
+  const { container } = render(<Markdown>{"![Logo](javascript:alert(1))"}</Markdown>);
+
+  expect(container.querySelector("img, a")).toBeNull();
+  expect(container).toHaveTextContent("Logo");
+});

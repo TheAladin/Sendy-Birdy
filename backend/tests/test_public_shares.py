@@ -224,7 +224,9 @@ async def test_a_shared_file_is_shown_inline(
     assert response.content == (await signed_in.get(f"/api/items/{shared.shot}/file")).content
     # The same protections as admin files, but a short private cache.
     assert response.headers["x-content-type-options"] == "nosniff"
-    assert response.headers["content-security-policy"] == "default-src 'none'; sandbox"
+    assert response.headers["content-security-policy"] == (
+        "default-src 'none'; sandbox; frame-ancestors 'none'"
+    )
     assert response.headers["cache-control"] == "private, max-age=3600"
     assert_public_headers(response)
 
