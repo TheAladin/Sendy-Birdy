@@ -9,8 +9,10 @@ from fastapi.responses import FileResponse
 from sqlalchemy import select, update
 from sqlalchemy.orm import selectinload
 
+from app.core.client_ip import client_ip
 from app.core.config import Settings
 from app.core.deps import SettingsDep
+from app.core.ratelimit import too_many_attempts
 from app.core.security import verify_password
 from app.core.unlock import UNLOCK_COOKIE, UNLOCK_LIFETIME, is_unlocked, make_unlock
 from app.db.session import SessionDep
@@ -192,7 +194,11 @@ async def get_shared_thumbnail(
 @router.post(
     "/{token}/unlock",
     status_code=status.HTTP_204_NO_CONTENT,
-    responses={**SHARE_RESPONSES, 401: {"description": "Wrong password"}},
+    responses={
+        **SHARE_RESPONSES,
+        401: {"description": "Wrong password"},
+        429: {"description": "Too many failed attempts"},
+    },
 )
 async def unlock_share(
     token: Token,
@@ -207,8 +213,19 @@ async def unlock_share(
     if share.password_hash is None:
         # Nothing to unlock; the page can simply be loaded.
         return response
+    limits = request.app.state.rate_limits
+    visitor_key = f"{client_ip(request) or 'unknown'}:{share.id}"
+    share_key = str(share.id)
+    wait = max(
+        limits.unlock_per_visitor.retry_after(visitor_key) or 0,
+        limits.unlock_per_share.retry_after(share_key) or 0,
+    )
+    if wait:
+        raise too_many_attempts(wait)
     valid, new_hash = await verify_password(body.password, share.password_hash)
     if not valid:
+        limits.unlock_per_visitor.record_failure(visitor_key)
+        limits.unlock_per_share.record_failure(share_key)
         add_event(session, request, "unlock_failed", share=share)
         await session.commit()
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "That password isn't right.")

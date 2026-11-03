@@ -4,7 +4,9 @@ from typing import Annotated
 from fastapi import APIRouter, Cookie, HTTPException, Request, Response, status
 from sqlalchemy import delete, select
 
+from app.core.client_ip import client_ip
 from app.core.deps import SESSION_COOKIE, CurrentUser, SettingsDep
+from app.core.ratelimit import too_many_attempts
 from app.core.security import hash_token, new_session_token, normalize_email, verify_password
 from app.db.session import SessionDep
 from app.models import AuthSession, User
@@ -17,7 +19,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 COOKIE_PATH = "/api"
 
 
-@router.post("/login")
+@router.post("/login", responses={429: {"description": "Too many failed attempts"}})
 async def login(
     body: LoginRequest,
     request: Request,
@@ -25,15 +27,23 @@ async def login(
     session: SessionDep,
     settings: SettingsDep,
 ) -> UserOut:
+    limiter = request.app.state.rate_limits.login
+    visitor = client_ip(request) or "unknown"
+    # Checked first, so a blocked attempt doesn't even cost a password hash.
+    if wait := limiter.retry_after(visitor):
+        raise too_many_attempts(wait)
+
     user = await session.scalar(select(User).where(User.email == normalize_email(body.email)))
     valid, new_hash = await verify_password(body.password, user.password_hash if user else None)
     if user is None or not valid:
+        limiter.record_failure(visitor)
         add_event(session, request, "login_failed")
         await session.commit()
         # Same message for both cases, so the response doesn't reveal which emails exist.
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Wrong email or password")
     if new_hash:
         user.password_hash = new_hash
+    limiter.reset(visitor)
 
     token = new_session_token()
     lifetime = timedelta(days=settings.session_days)

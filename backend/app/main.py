@@ -10,6 +10,7 @@ from app.core.config import Settings, get_settings
 from app.core.csrf import require_csrf_header
 from app.core.limits import LimitJsonBody
 from app.core.public import add_public_headers
+from app.core.ratelimit import RateLimits
 from app.db.session import create_engine, create_sessionmaker
 from app.routers import activity, auth, health, items, public, shares
 from app.services.activity import cleanup_daily
@@ -43,6 +44,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         lifespan=lifespan,
     )
     app.state.settings = settings
+    app.state.rate_limits = RateLimits()
     # The engine connects lazily, on the first query, so creating it here is cheap.
     app.state.engine = create_engine(settings.database_url.get_secret_value())
     app.state.sessionmaker = create_sessionmaker(app.state.engine)
