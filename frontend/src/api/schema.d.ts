@@ -214,6 +214,63 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/public/shares/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * View Share
+         * @description A share's content. Each call counts as a view.
+         */
+        get: operations["view_share_api_public_shares__token__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/shares/{token}/items/{item_id}/file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Shared File
+         * @description An item's file, shown in the page; with ?download=1, saved instead (if allowed).
+         */
+        get: operations["get_shared_file_api_public_shares__token__items__item_id__file_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/shares/{token}/items/{item_id}/thumbnail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Shared Thumbnail */
+        get: operations["get_shared_thumbnail_api_public_shares__token__items__item_id__thumbnail_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/shares": {
         parameters: {
             query?: never;
@@ -447,6 +504,50 @@ export interface components {
             /** Title */
             title: string;
         };
+        /** PublicItem */
+        PublicItem: {
+            /** Body */
+            body: string | null;
+            /** Duration S */
+            duration_s: number | null;
+            /** Has Thumbnail */
+            has_thumbnail: boolean;
+            /** Height */
+            height: number | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "image" | "video" | "note";
+            /** Mime Type */
+            mime_type: string | null;
+            /** Size Bytes */
+            size_bytes: number | null;
+            /** Title */
+            title: string;
+            /** Width */
+            width: number | null;
+        };
+        /** PublicShare */
+        PublicShare: {
+            /** Allow Downloads */
+            allow_downloads: boolean;
+            /** Expires At */
+            expires_at: string | null;
+            /** Items */
+            items: components["schemas"]["PublicItem"][];
+            /** Message */
+            message: string | null;
+            /** Shared By */
+            shared_by: string;
+            /** Title */
+            title: string;
+        };
         /** ShareCreate */
         ShareCreate: {
             /**
@@ -471,6 +572,23 @@ export interface components {
             message?: string | null;
             /** Title */
             title: string;
+        };
+        /**
+         * ShareGone
+         * @description The 410 body: the link existed but can't be opened anymore, and why.
+         */
+        ShareGone: {
+            detail: components["schemas"]["ShareGoneDetail"];
+        };
+        /** ShareGoneDetail */
+        ShareGoneDetail: {
+            /** Message */
+            message: string;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "expired" | "revoked";
         };
         /** ShareOut */
         ShareOut: {
@@ -1084,6 +1202,161 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    view_share_api_public_shares__token__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicShare"];
+                };
+            };
+            /** @description No share has this token */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The share expired or was revoked */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShareGone"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_shared_file_api_public_shares__token__items__item_id__file_get: {
+        parameters: {
+            query?: {
+                download?: boolean;
+            };
+            header?: never;
+            path: {
+                token: string;
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The file itself */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Part of it */
+            206: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Downloads are turned off for this share */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No share has this token */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The share expired or was revoked */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShareGone"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_shared_thumbnail_api_public_shares__token__items__item_id__thumbnail_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A WebP preview, at most 640x640 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No share has this token */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The share expired or was revoked */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShareGone"];
+                };
             };
             /** @description Validation Error */
             422: {

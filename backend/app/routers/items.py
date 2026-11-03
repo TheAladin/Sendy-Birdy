@@ -2,10 +2,8 @@ import base64
 import logging
 import uuid
 from datetime import datetime
-from pathlib import Path
 from typing import Annotated
 
-import anyio
 from fastapi import APIRouter, HTTPException, Query, Request, Response, status
 from fastapi.responses import FileResponse
 from sqlalchemy import delete, select, tuple_
@@ -26,6 +24,7 @@ from app.schemas.items import (
 )
 from app.services.images import InvalidImage
 from app.services.library import add_media
+from app.services.serving import original_response, thumbnail_response
 from app.services.sharing import share_counts
 from app.services.storage import (
     ALLOWED_TYPES,
@@ -249,17 +248,6 @@ async def bulk_delete_items(
 # Content never changes for a given id (renaming only changes the title), so browsers may keep
 # it; "private" keeps shared caches and CDNs from storing it.
 FILE_CACHE = "private, max-age=31536000, immutable"
-# If a file URL is opened directly, nothing in it may run or load anything.
-FILE_SECURITY_HEADERS = {
-    "X-Content-Type-Options": "nosniff",
-    "Content-Security-Policy": "default-src 'none'; sandbox",
-}
-
-
-def download_name(item: Item) -> str:
-    """The current title plus the original extension, e.g. "Checkout v2.png"."""
-    suffix = Path(item.original_filename or "").suffix
-    return item.title if not suffix or item.title.endswith(suffix) else item.title + suffix
 
 
 @router.get(
@@ -279,18 +267,12 @@ async def get_item_file(
     Supports Range requests, so videos can be seeked.
     """
     item = await _get_item(session, item_id)
-    path = Storage(settings.data_dir).original_path(item.id)
-    if item.kind == "note" or not await anyio.Path(path).is_file():
-        if item.kind != "note":
-            logger.error("Item %s has no file on disk", item.id)
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "This item has no file.")
-    return FileResponse(
-        path,
-        media_type=item.mime_type,
-        filename=download_name(item),
-        content_disposition_type="attachment" if download else "inline",
-        headers={"Cache-Control": FILE_CACHE, **FILE_SECURITY_HEADERS},
+    response = await original_response(
+        item, Storage(settings.data_dir), download=download, cache_control=FILE_CACHE
     )
+    if response is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "This item has no file.")
+    return response
 
 
 @router.get(
@@ -302,11 +284,7 @@ async def get_item_thumbnail(
     item_id: uuid.UUID, session: SessionDep, settings: SettingsDep, _user: CurrentUser
 ) -> FileResponse:
     item = await _get_item(session, item_id)
-    path = Storage(settings.data_dir).thumbnail_path(item.id)
-    if not item.has_thumbnail or not await anyio.Path(path).is_file():
+    response = await thumbnail_response(item, Storage(settings.data_dir), cache_control=FILE_CACHE)
+    if response is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "This item has no thumbnail.")
-    return FileResponse(
-        path,
-        media_type="image/webp",
-        headers={"Cache-Control": FILE_CACHE, **FILE_SECURITY_HEADERS},
-    )
+    return response

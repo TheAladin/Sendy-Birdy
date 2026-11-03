@@ -8,8 +8,9 @@ from fastapi import FastAPI
 from app.core.config import Settings, get_settings
 from app.core.csrf import require_csrf_header
 from app.core.limits import LimitJsonBody
+from app.core.public import add_public_headers
 from app.db.session import create_engine, create_sessionmaker
-from app.routers import auth, health, items, shares
+from app.routers import auth, health, items, public, shares
 
 
 @asynccontextmanager
@@ -40,9 +41,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.engine = create_engine(settings.database_url.get_secret_value())
     app.state.sessionmaker = create_sessionmaker(app.state.engine)
     app.middleware("http")(require_csrf_header)
+    app.middleware("http")(add_public_headers)
     app.add_middleware(LimitJsonBody)
     app.include_router(health.router, prefix="/api")
     app.include_router(auth.router, prefix="/api")
     app.include_router(items.router, prefix="/api")
     app.include_router(shares.router, prefix="/api")
+    app.include_router(public.router, prefix="/api")
     return app
