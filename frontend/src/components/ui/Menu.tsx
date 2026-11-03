@@ -16,13 +16,16 @@ interface MenuProps {
   icon: ReactNode;
   items: MenuItem[];
   align?: "start" | "end";
+  /** Style of the trigger button. */
+  variant?: "ghost" | "secondary";
+  className?: string;
 }
 
 /**
  * A dropdown menu following the WAI-ARIA menu button pattern: ↑/↓/Home/End move between items,
  * Enter or Space selects, Esc closes and returns focus to the button.
  */
-export function Menu({ label, icon, items, align = "end" }: MenuProps) {
+export function Menu({ label, icon, items, align = "end", variant, className }: MenuProps) {
   const [open, setOpen] = useState(false);
   const menuId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -74,6 +77,8 @@ export function Menu({ label, icon, items, align = "end" }: MenuProps) {
         ref={triggerRef}
         label={label}
         icon={icon}
+        variant={variant}
+        className={className}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}

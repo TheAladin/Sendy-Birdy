@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "./client";
-import { ApiError, apiError } from "./errors";
+import { apiError, apiErrorFrom } from "./errors";
 import type { components } from "./schema";
 
 export type ItemOut = components["schemas"]["ItemOut"];
@@ -25,19 +25,6 @@ export function useItem(id: string | undefined) {
   });
 }
 
-/**
- * The server's own message: FastAPI's "detail" string, or the first validation message of a 422
- * (e.g. "A note can be at most 100 KB."). `body` is the error body openapi-fetch already parsed;
- * the response itself can't be read twice.
- */
-function errorFrom(response: Response, body: unknown): ApiError {
-  const detail = (body as { detail?: unknown } | undefined)?.detail;
-  const message = Array.isArray(detail)
-    ? (detail[0] as { msg?: string } | undefined)?.msg?.replace(/^Value error, /, "")
-    : detail;
-  return typeof message === "string" ? new ApiError(response.status, message) : apiError(response);
-}
-
 interface NoteInput {
   title: string;
   body: string;
@@ -53,7 +40,7 @@ export function useSaveNote(id?: string) {
             body: note,
           })
         : await api.POST("/api/items/notes", { body: note });
-      if (!data) throw errorFrom(response, error);
+      if (!data) throw apiErrorFrom(response, error);
       return data;
     },
     onSuccess: (saved) => {

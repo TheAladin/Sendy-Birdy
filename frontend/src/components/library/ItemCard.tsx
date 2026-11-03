@@ -1,7 +1,8 @@
-import { Film, Image as ImageIcon, Play, StickyNote } from "lucide-react";
-import { type ReactNode, useId } from "react";
+import { Check, Film, Image as ImageIcon, Play, StickyNote } from "lucide-react";
+import { type ReactNode, useId, useRef, useState } from "react";
 
 import { type ItemSummary, thumbnailUrl } from "../../api/items";
+import { cn } from "../../lib/cn";
 import { formatBytes, formatDateTime, formatDuration, formatRelative } from "../../lib/format";
 
 const KIND = {
@@ -52,36 +53,136 @@ interface ItemCardProps {
   /** Opens the item in the viewer; makes the whole preview a button. */
   onOpen?: () => void;
   actions?: ReactNode;
+  /** In selection mode the preview becomes a checkbox instead, and actions are hidden. */
+  selection?: { selected: boolean; onToggle: (range: boolean) => void };
+  /** Shows an input in place of the title; called with the new title, or null to cancel. */
+  renaming?: boolean;
+  onRenameEnd?: (title: string | null) => void;
 }
 
-export function ItemCard({ item, onOpen, actions }: ItemCardProps) {
+function RenameField({
+  title,
+  label,
+  onDone,
+}: {
+  title: string;
+  label: string;
+  onDone: (title: string | null, refocus: boolean) => void;
+}) {
+  const [value, setValue] = useState(title);
+  const finished = useRef(false);
+  const finish = (save: boolean, refocus: boolean) => {
+    // Enter and Esc unmount the input, which also fires blur; only the first one counts.
+    if (finished.current) return;
+    finished.current = true;
+    const trimmed = value.trim();
+    onDone(save && trimmed && trimmed !== title ? trimmed : null, refocus);
+  };
+  return (
+    <input
+      // Focus moves here as soon as the user picks "Rename", like renaming a file on a desktop.
+      // eslint-disable-next-line jsx-a11y-x/no-autofocus
+      autoFocus
+      aria-label={label}
+      value={value}
+      maxLength={200}
+      onFocus={(event) => event.target.select()}
+      onChange={(event) => setValue(event.target.value)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") finish(true, true);
+        else if (event.key === "Escape") finish(false, true);
+        else return;
+        event.preventDefault();
+      }}
+      onBlur={() => finish(true, false)}
+      className="-mx-1 w-[calc(100%+0.5rem)] rounded border border-brand-600 bg-white px-1 text-sm font-medium outline-none dark:bg-zinc-950"
+    />
+  );
+}
+
+export function ItemCard({
+  item,
+  onOpen,
+  actions,
+  selection,
+  renaming = false,
+  onRenameEnd,
+}: ItemCardProps) {
   const titleId = useId();
+  const openRef = useRef<HTMLButtonElement>(null);
   const { label, icon: KindIcon } = KIND[item.kind];
   const created = new Date(item.created_at);
   const details = [formatLabel(item), item.size_bytes != null && formatBytes(item.size_bytes)]
     .filter(Boolean)
     .join(" · ");
+  const selected = selection?.selected ?? false;
 
   return (
     <article
       aria-labelledby={titleId}
-      className="overflow-hidden rounded-card border border-zinc-200 bg-white shadow-card dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-none"
+      data-item-id={item.id}
+      className={cn(
+        "group overflow-hidden rounded-card border bg-white shadow-card dark:bg-zinc-900 dark:shadow-none",
+        selected
+          ? "border-brand-600 ring-2 ring-brand-600 dark:border-brand-400 dark:ring-brand-400"
+          : "border-zinc-200 dark:border-zinc-800",
+      )}
     >
       <div className="relative aspect-[4/3] overflow-hidden bg-zinc-100 dark:bg-zinc-800">
         <Preview item={item} />
-        {onOpen && (
-          <button
-            type="button"
-            onClick={onOpen}
-            aria-label={`Open ${item.title}`}
-            className="absolute inset-0 cursor-zoom-in focus-visible:outline-offset-[-3px]"
-          />
+        {selection ? (
+          <>
+            {/* The real control covers the preview, so a click anywhere toggles it. */}
+            <input
+              type="checkbox"
+              data-card-focus
+              aria-label={`Select ${item.title}`}
+              checked={selected}
+              onChange={(event) =>
+                selection.onToggle((event.nativeEvent as MouseEvent).shiftKey === true)
+              }
+              className="peer absolute inset-0 z-10 cursor-pointer appearance-none focus-visible:outline-offset-[-3px]"
+            />
+            <span
+              aria-hidden="true"
+              className={cn(
+                "pointer-events-none absolute top-2 right-2 grid size-6 place-items-center rounded-md border-2 shadow-sm",
+                selected
+                  ? "border-brand-700 bg-brand-700 text-white"
+                  : "border-zinc-400 bg-white/90 dark:border-zinc-500 dark:bg-zinc-950/80",
+              )}
+            >
+              {selected && <Check className="size-4" strokeWidth={3} />}
+            </span>
+            {selected && <span className="pointer-events-none absolute inset-0 bg-brand-500/10" />}
+          </>
+        ) : (
+          onOpen && (
+            <button
+              ref={openRef}
+              type="button"
+              data-card-focus
+              onClick={onOpen}
+              aria-label={`Open ${item.title}`}
+              className="absolute inset-0 cursor-zoom-in focus-visible:outline-offset-[-3px]"
+            />
+          )
         )}
         <span className="pointer-events-none absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-xs font-medium text-zinc-800 shadow-sm backdrop-blur dark:bg-zinc-950/80 dark:text-zinc-200">
           <KindIcon className="size-3" aria-hidden="true" />
           {label}
         </span>
-        {actions && <div className="absolute top-2 right-2 z-10 flex gap-1">{actions}</div>}
+        {actions && !selection && (
+          <div
+            className={cn(
+              "absolute top-2 right-2 z-10 flex gap-1",
+              // With a mouse, actions appear on hover or keyboard focus; touch screens always show them.
+              "[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-focus-within:opacity-100 [@media(hover:hover)]:group-hover:opacity-100",
+            )}
+          >
+            {actions}
+          </div>
+        )}
         {item.kind === "video" && (
           <>
             <span
@@ -102,9 +203,25 @@ export function ItemCard({ item, onOpen, actions }: ItemCardProps) {
         )}
       </div>
       <div className="p-3">
-        <h3 id={titleId} className="truncate text-sm font-medium" title={item.title}>
-          {item.title}
-        </h3>
+        {renaming ? (
+          <>
+            <h3 id={titleId} className="sr-only">
+              {item.title}
+            </h3>
+            <RenameField
+              title={item.title}
+              label={`New title for ${item.title}`}
+              onDone={(title, refocus) => {
+                onRenameEnd?.(title);
+                if (refocus) openRef.current?.focus();
+              }}
+            />
+          </>
+        ) : (
+          <h3 id={titleId} className="truncate text-sm font-medium" title={item.title}>
+            {item.title}
+          </h3>
+        )}
         <p className="mt-1 truncate text-xs text-zinc-600 tabular-nums dark:text-zinc-400">
           {details} ·{" "}
           <time dateTime={item.created_at} title={formatDateTime(created)}>
