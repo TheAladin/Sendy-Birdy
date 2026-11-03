@@ -4,6 +4,7 @@ import { Link, useSearchParams } from "react-router";
 
 import { type ItemKind, useItems } from "../api/items";
 import { ItemCard, ItemCardSkeleton } from "../components/library/ItemCard";
+import { Lightbox } from "../components/library/Lightbox";
 import { NoteEditor } from "../components/library/NoteEditor";
 import { PageHeader } from "../components/PageHeader";
 import { Button, IconButton } from "../components/ui/Button";
@@ -42,6 +43,8 @@ export default function LibraryPage() {
   );
   // undefined: closed; "new": creating; otherwise the id of the note being edited.
   const [editingNote, setEditingNote] = useState<string | undefined>();
+  // Index (in the loaded results) of the item open in the viewer.
+  const [viewing, setViewing] = useState<number | undefined>();
   const uploadButton = (
     <Button onClick={() => filePicker.current?.click()}>
       <Upload className="size-4" aria-hidden="true" />
@@ -71,6 +74,7 @@ export default function LibraryPage() {
 
   // Load the next page automatically when the end of the grid scrolls into view.
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = items;
+  const fetchMore = useCallback(() => void fetchNextPage(), [fetchNextPage]);
   useEffect(() => {
     const target = sentinel.current;
     if (!target || !hasNextPage || typeof IntersectionObserver === "undefined") return;
@@ -109,6 +113,15 @@ export default function LibraryPage() {
           </>
         }
       />
+      {viewing !== undefined && results[viewing] && (
+        <Lightbox
+          items={results}
+          index={viewing}
+          onIndexChange={setViewing}
+          onClose={() => setViewing(undefined)}
+          onReachEnd={hasNextPage && !isFetchingNextPage ? fetchMore : undefined}
+        />
+      )}
       {editingNote && (
         <NoteEditor
           noteId={editingNote === "new" ? undefined : editingNote}
@@ -218,10 +231,11 @@ export default function LibraryPage() {
       ) : (
         <>
           <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {results.map((item) => (
+            {results.map((item, index) => (
               <li key={item.id}>
                 <ItemCard
                   item={item}
+                  onOpen={() => setViewing(index)}
                   actions={
                     item.kind === "note" && (
                       <IconButton

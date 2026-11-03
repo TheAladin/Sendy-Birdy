@@ -47,7 +47,14 @@ function Preview({ item }: { item: ItemSummary }) {
   );
 }
 
-export function ItemCard({ item, actions }: { item: ItemSummary; actions?: ReactNode }) {
+interface ItemCardProps {
+  item: ItemSummary;
+  /** Opens the item in the viewer; makes the whole preview a button. */
+  onOpen?: () => void;
+  actions?: ReactNode;
+}
+
+export function ItemCard({ item, onOpen, actions }: ItemCardProps) {
   const titleId = useId();
   const { label, icon: KindIcon } = KIND[item.kind];
   const created = new Date(item.created_at);
@@ -62,20 +69,31 @@ export function ItemCard({ item, actions }: { item: ItemSummary; actions?: React
     >
       <div className="relative aspect-[4/3] overflow-hidden bg-zinc-100 dark:bg-zinc-800">
         <Preview item={item} />
-        <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-xs font-medium text-zinc-800 shadow-sm backdrop-blur dark:bg-zinc-950/80 dark:text-zinc-200">
+        {onOpen && (
+          <button
+            type="button"
+            onClick={onOpen}
+            aria-label={`Open ${item.title}`}
+            className="absolute inset-0 cursor-zoom-in focus-visible:outline-offset-[-3px]"
+          />
+        )}
+        <span className="pointer-events-none absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-xs font-medium text-zinc-800 shadow-sm backdrop-blur dark:bg-zinc-950/80 dark:text-zinc-200">
           <KindIcon className="size-3" aria-hidden="true" />
           {label}
         </span>
-        {actions && <div className="absolute top-2 right-2 flex gap-1">{actions}</div>}
+        {actions && <div className="absolute top-2 right-2 z-10 flex gap-1">{actions}</div>}
         {item.kind === "video" && (
           <>
-            <span className="absolute inset-0 grid place-items-center" aria-hidden="true">
+            <span
+              className="pointer-events-none absolute inset-0 grid place-items-center"
+              aria-hidden="true"
+            >
               <span className="grid size-11 place-items-center rounded-full bg-zinc-950/60 text-white backdrop-blur">
                 <Play className="ml-0.5 size-5 fill-current" />
               </span>
             </span>
             {item.duration_s != null && (
-              <span className="absolute right-2 bottom-2 rounded bg-zinc-950/75 px-1.5 py-0.5 text-xs font-medium text-white tabular-nums">
+              <span className="pointer-events-none absolute right-2 bottom-2 rounded bg-zinc-950/75 px-1.5 py-0.5 text-xs font-medium text-white tabular-nums">
                 <span className="sr-only">Duration </span>
                 {formatDuration(item.duration_s)}
               </span>
