@@ -5,7 +5,7 @@ SHELL := bash
 BACKEND := backend
 FRONTEND := frontend
 
-.PHONY: help install db-setup db-migrate create-admin seed-demo gen-api dev dev-api dev-web check fmt
+.PHONY: help install db-setup db-migrate create-admin seed-demo gen-api build serve dev dev-api dev-web check fmt
 
 help: ## List available commands
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "} {printf "  make %-10s %s\n", $$1, $$2}'
@@ -41,6 +41,12 @@ dev-api: ## Run only the API (http://127.0.0.1:8000)
 
 dev-web: ## Run only the frontend (http://localhost:5173)
 	cd $(FRONTEND) && npm run dev
+
+build: ## Build the frontend into frontend/dist, which the API then serves
+	cd $(FRONTEND) && npm run build
+
+serve: ## Run the built app from uvicorn alone (http://127.0.0.1:8000), no Vite
+	cd $(BACKEND) && uv run uvicorn app.main:create_app --factory
 
 # The schema goes through a temporary file inside node_modules, which git ignores.
 gen-api: ## Regenerate the frontend's API types from the backend's OpenAPI schema

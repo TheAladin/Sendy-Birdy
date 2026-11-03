@@ -78,6 +78,8 @@ def settings(tmp_path: Path, test_database_url: str) -> Settings:
         secret_key=TEST_SECRET_KEY,
         database_url=test_database_url,
         data_dir=tmp_path / "data",
+        # Never the real build: whether `make build` was run mustn't change any test.
+        frontend_dir=tmp_path / "dist",
     )
 
 

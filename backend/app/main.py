@@ -8,6 +8,7 @@ from fastapi import FastAPI
 
 from app.core.config import Settings, get_settings
 from app.core.csrf import require_csrf_header
+from app.core.frontend import mount_frontend
 from app.core.limits import LimitJsonBody
 from app.core.public import add_public_headers
 from app.core.ratelimit import RateLimits
@@ -57,4 +58,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(shares.router, prefix="/api")
     app.include_router(public.router, prefix="/api")
     app.include_router(activity.router, prefix="/api")
+    # Last, so it only gets the paths no API route matched.
+    mount_frontend(app, settings.frontend_dir)
     return app

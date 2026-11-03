@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     # Where uploaded media is stored. Kept outside git.
     data_dir: Path = REPO_ROOT / "data"
 
+    # The frontend build (`make build`). When it's missing, only the API is served.
+    frontend_dir: Path = REPO_ROOT / "frontend" / "dist"
+
     # Base URL clients use to open share links (your tunnel URL in production).
     public_base_url: str = "http://localhost:5173"
 
