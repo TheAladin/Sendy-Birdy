@@ -16,6 +16,7 @@ from app.services.storage import (
     clean_filename,
     title_from_filename,
 )
+from app.services.videos import VideoInfo, inspect_video
 
 router = APIRouter(prefix="/items", tags=["items"])
 
@@ -81,6 +82,12 @@ async def upload_item(
         if image.rewritten:
             upload = await storage.remeasure(upload)
 
+    video: VideoInfo | None = None
+    if upload.kind == "video":
+        video = await inspect_video(upload.temp_path)
+    thumbnail = image.thumbnail_webp if image else video.poster_webp if video else None
+    details = image or video
+
     name = clean_filename(filename)
     item = Item(
         kind=upload.kind,
@@ -89,15 +96,17 @@ async def upload_item(
         mime_type=upload.mime_type,
         size_bytes=upload.size_bytes,
         sha256=upload.sha256,
-        width=image.width if image else None,
-        height=image.height if image else None,
+        width=details.width if details else None,
+        height=details.height if details else None,
+        duration_s=video.duration_s if video else None,
+        has_thumbnail=thumbnail is not None,
     )
     try:
         session.add(item)
         await session.flush()  # assigns item.id
         await storage.keep(upload, item.id)
-        if image:
-            await storage.save_thumbnail(item.id, image.thumbnail_webp)
+        if thumbnail:
+            await storage.save_thumbnail(item.id, thumbnail)
         await session.commit()
     except BaseException:
         await storage.discard(upload)

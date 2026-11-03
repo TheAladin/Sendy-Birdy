@@ -1,4 +1,4 @@
-from sqlalchemy import BigInteger, CheckConstraint, Float, Integer, String
+from sqlalchemy import BigInteger, Boolean, CheckConstraint, Float, Integer, String, false
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Model
@@ -20,3 +20,5 @@ class Item(Model):
     width: Mapped[int | None] = mapped_column(Integer)
     height: Mapped[int | None] = mapped_column(Integer)
     duration_s: Mapped[float | None] = mapped_column(Float)
+    # Images always get one; videos only when ffmpeg could extract a poster frame.
+    has_thumbnail: Mapped[bool] = mapped_column(Boolean, server_default=false())

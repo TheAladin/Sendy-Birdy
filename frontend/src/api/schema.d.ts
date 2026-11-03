@@ -121,6 +121,8 @@ export interface components {
             created_at: string;
             /** Duration S */
             duration_s: number | null;
+            /** Has Thumbnail */
+            has_thumbnail: boolean;
             /** Height */
             height: number | null;
             /**

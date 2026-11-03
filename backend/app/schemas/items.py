@@ -17,4 +17,5 @@ class ItemOut(BaseModel):
     width: int | None
     height: int | None
     duration_s: float | None
+    has_thumbnail: bool
     created_at: datetime
