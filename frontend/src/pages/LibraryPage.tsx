@@ -5,6 +5,7 @@ import {
   NotebookPen,
   Pencil,
   SearchX,
+  Share2,
   TextCursorInput,
   Trash2,
   Upload,
@@ -23,6 +24,7 @@ import { ItemCard, ItemCardSkeleton } from "../components/library/ItemCard";
 import { Lightbox } from "../components/library/Lightbox";
 import { NoteEditor } from "../components/library/NoteEditor";
 import { PageHeader } from "../components/PageHeader";
+import { ShareDialog } from "../components/shares/ShareDialog";
 import { Button, IconButton } from "../components/ui/Button";
 import { Dialog } from "../components/ui/Dialog";
 import { EmptyState, Spinner } from "../components/ui/Display";
@@ -71,6 +73,8 @@ export default function LibraryPage() {
   const [anchor, setAnchor] = useState<string | undefined>();
   // Items waiting for the user to confirm deletion.
   const [deleting, setDeleting] = useState<ItemSummary[] | undefined>();
+  // Items being shared, in the order they'll appear (grid order to start with).
+  const [sharing, setSharing] = useState<ItemSummary[] | undefined>();
   // The card to focus once deleted cards are gone, so keyboard users keep their place.
   const focusAfterDelete = useRef<string | undefined>(undefined);
   const rename = useRenameItem();
@@ -270,6 +274,14 @@ export default function LibraryPage() {
             Select all
           </Button>
           <Button
+            size="sm"
+            disabled={selectedItems.length === 0}
+            onClick={() => setSharing(selectedItems)}
+          >
+            <Share2 className="size-4" aria-hidden="true" />
+            Share
+          </Button>
+          <Button
             variant="danger"
             size="sm"
             disabled={selectedItems.length === 0}
@@ -282,6 +294,15 @@ export default function LibraryPage() {
             Done
           </Button>
         </section>
+      )}
+      {sharing && (
+        <ShareDialog
+          items={sharing}
+          onClose={() => setSharing(undefined)}
+          onCreated={() => {
+            if (selecting) stopSelecting();
+          }}
+        />
       )}
       {editingNote && (
         <NoteEditor
@@ -449,6 +470,11 @@ export default function LibraryPage() {
                         variant="secondary"
                         className="size-8 shadow-sm"
                         items={[
+                          {
+                            label: "Share…",
+                            icon: <Share2 />,
+                            onSelect: () => setSharing([item]),
+                          },
                           {
                             label: "Rename",
                             icon: <TextCursorInput />,

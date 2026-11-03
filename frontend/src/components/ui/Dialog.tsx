@@ -1,5 +1,5 @@
 import { X } from "lucide-react";
-import { type ReactNode, useEffect, useId, useRef } from "react";
+import { type FormEvent, type ReactNode, type RefObject, useEffect, useId, useRef } from "react";
 
 import { cn } from "../../lib/cn";
 import { IconButton } from "./Button";
@@ -14,6 +14,13 @@ interface DialogProps {
   footer?: ReactNode;
   /** Room for a form or editor instead of a short message. */
   wide?: boolean;
+  /** What gets focus on opening; otherwise the browser picks the first control (the close button). */
+  initialFocus?: RefObject<HTMLElement | null>;
+  /**
+   * Makes the body and footer one form, so Enter in a field submits it (with a type="submit"
+   * button in the footer). The handler must call preventDefault.
+   */
+  onSubmit?: (event: FormEvent<HTMLFormElement>) => void;
 }
 
 /**
@@ -28,6 +35,8 @@ export function Dialog({
   children,
   footer,
   wide = false,
+  initialFocus,
+  onSubmit,
 }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
@@ -36,9 +45,19 @@ export function Dialog({
   useEffect(() => {
     const dialog = ref.current;
     if (!dialog) return;
-    if (open && !dialog.open) dialog.showModal();
+    if (open && !dialog.open) {
+      dialog.showModal();
+      initialFocus?.current?.focus();
+    }
     if (!open && dialog.open) dialog.close();
-  }, [open]);
+  }, [open, initialFocus]);
+
+  const body = (
+    <>
+      {children && <div className="mt-4">{children}</div>}
+      {footer && <div className="mt-6 flex justify-end gap-2">{footer}</div>}
+    </>
+  );
 
   return (
     <dialog
@@ -76,8 +95,13 @@ export function Dialog({
           {description}
         </p>
       )}
-      {children && <div className="mt-4">{children}</div>}
-      {footer && <div className="mt-6 flex justify-end gap-2">{footer}</div>}
+      {onSubmit ? (
+        <form onSubmit={onSubmit} noValidate>
+          {body}
+        </form>
+      ) : (
+        body
+      )}
     </dialog>
   );
 }
