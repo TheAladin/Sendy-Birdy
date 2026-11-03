@@ -3,6 +3,7 @@ import { useState } from "react";
 import { createBrowserRouter, RouterProvider } from "react-router";
 
 import { createQueryClient } from "./api/queryClient";
+import { Toaster } from "./components/ui/Toaster";
 import { routes } from "./routes";
 
 const router = createBrowserRouter(routes);
@@ -12,7 +13,9 @@ export default function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      <Toaster>
+        <RouterProvider router={router} />
+      </Toaster>
     </QueryClientProvider>
   );
 }
