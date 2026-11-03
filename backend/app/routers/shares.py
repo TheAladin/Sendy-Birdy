@@ -2,7 +2,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Query, Response, status
+from fastapi import APIRouter, HTTPException, Query, Request, Response, status
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import selectinload
 
@@ -19,6 +19,7 @@ from app.schemas.shares import (
     ShareSummary,
     ShareUpdate,
 )
+from app.services.activity import add_event
 from app.services.sharing import share_counts, share_url
 
 router = APIRouter(prefix="/shares", tags=["shares"])
@@ -174,12 +175,17 @@ async def update_share(
 
 @router.post("/{share_id}/revoke")
 async def revoke_share(
-    share_id: uuid.UUID, session: SessionDep, settings: SettingsDep, _user: CurrentUser
+    share_id: uuid.UUID,
+    request: Request,
+    session: SessionDep,
+    settings: SettingsDep,
+    _user: CurrentUser,
 ) -> ShareOut:
     """Turn the link off for good. Revoking twice keeps the first date."""
     share = await _load(session, share_id)
     if share.revoked_at is None:
         share.revoked_at = datetime.now(UTC)
+        add_event(session, request, "share_revoked", share=share)
         await session.commit()
     return await _share_out(session, await _load(session, share_id), settings)
 

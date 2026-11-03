@@ -16,6 +16,7 @@ from app.core.unlock import UNLOCK_COOKIE, UNLOCK_LIFETIME, is_unlocked, make_un
 from app.db.session import SessionDep
 from app.models import Item, Share, ShareItem, User
 from app.schemas.public import PublicItem, PublicShare, ShareGone, ShareLocked, UnlockRequest
+from app.services.activity import add_event
 from app.services.serving import original_response, thumbnail_response
 from app.services.storage import Storage
 
@@ -119,6 +120,7 @@ async def view_share(
         .where(Share.id == share.id)
         .values(view_count=Share.view_count + 1, last_viewed_at=datetime.now(UTC))
     )
+    add_event(session, request, "share_viewed", share=share)
     await session.commit()
     return PublicShare(
         title=share.title,
@@ -158,6 +160,10 @@ async def get_shared_file(
     )
     if response is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found.")
+    # Only deliberate downloads: files shown in the page would flood the log.
+    if download:
+        add_event(session, request, "file_downloaded", share=share, item=item)
+        await session.commit()
     return response
 
 
@@ -183,7 +189,11 @@ async def get_shared_thumbnail(
     responses={**SHARE_RESPONSES, 401: {"description": "Wrong password"}},
 )
 async def unlock_share(
-    token: Token, body: UnlockRequest, session: SessionDep, settings: SettingsDep
+    token: Token,
+    body: UnlockRequest,
+    request: Request,
+    session: SessionDep,
+    settings: SettingsDep,
 ) -> Response:
     """Check a share's password; if right, a cookie lets this browser in for 12 hours."""
     share = await _open_share(session, token)
@@ -193,6 +203,8 @@ async def unlock_share(
         return response
     valid, new_hash = await verify_password(body.password, share.password_hash)
     if not valid:
+        add_event(session, request, "unlock_failed", share=share)
+        await session.commit()
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "That password isn't right.")
     if new_hash:
         # pwdlib asks for this when hashing settings got stronger since the password was set.

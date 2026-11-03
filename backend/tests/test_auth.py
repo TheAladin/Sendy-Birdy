@@ -153,6 +153,7 @@ async def test_there_is_no_way_to_register(client: AsyncClient) -> None:
     paths = (await client.get("/api/openapi.json")).json()["paths"]
 
     assert sorted(paths) == [
+        "/api/activity",
         "/api/auth/login",
         "/api/auth/logout",
         "/api/auth/me",

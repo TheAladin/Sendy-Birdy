@@ -1,7 +1,7 @@
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Cookie, HTTPException, Response, status
+from fastapi import APIRouter, Cookie, HTTPException, Request, Response, status
 from sqlalchemy import delete, select
 
 from app.core.deps import SESSION_COOKIE, CurrentUser, SettingsDep
@@ -9,6 +9,7 @@ from app.core.security import hash_token, new_session_token, normalize_email, ve
 from app.db.session import SessionDep
 from app.models import AuthSession, User
 from app.schemas.auth import LoginRequest, UserOut
+from app.services.activity import add_event
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -18,11 +19,17 @@ COOKIE_PATH = "/api"
 
 @router.post("/login")
 async def login(
-    body: LoginRequest, response: Response, session: SessionDep, settings: SettingsDep
+    body: LoginRequest,
+    request: Request,
+    response: Response,
+    session: SessionDep,
+    settings: SettingsDep,
 ) -> UserOut:
     user = await session.scalar(select(User).where(User.email == normalize_email(body.email)))
     valid, new_hash = await verify_password(body.password, user.password_hash if user else None)
     if user is None or not valid:
+        add_event(session, request, "login_failed")
+        await session.commit()
         # Same message for both cases, so the response doesn't reveal which emails exist.
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Wrong email or password")
     if new_hash:
@@ -37,6 +44,7 @@ async def login(
             expires_at=datetime.now(UTC) + lifetime,
         )
     )
+    add_event(session, request, "login_succeeded")
     await session.commit()
 
     response.set_cookie(

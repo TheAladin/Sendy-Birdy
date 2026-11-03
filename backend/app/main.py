@@ -1,7 +1,8 @@
 """Builds the FastAPI application."""
 
+import asyncio
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI
 
@@ -10,12 +11,17 @@ from app.core.csrf import require_csrf_header
 from app.core.limits import LimitJsonBody
 from app.core.public import add_public_headers
 from app.db.session import create_engine, create_sessionmaker
-from app.routers import auth, health, items, public, shares
+from app.routers import activity, auth, health, items, public, shares
+from app.services.activity import cleanup_daily
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    cleanup = asyncio.create_task(cleanup_daily(app))
     yield
+    cleanup.cancel()
+    with suppress(asyncio.CancelledError):
+        await cleanup
     await app.state.engine.dispose()
 
 
@@ -48,4 +54,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(items.router, prefix="/api")
     app.include_router(shares.router, prefix="/api")
     app.include_router(public.router, prefix="/api")
+    app.include_router(activity.router, prefix="/api")
     return app

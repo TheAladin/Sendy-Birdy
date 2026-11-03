@@ -1,7 +1,5 @@
-import base64
 import logging
 import uuid
-from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, Request, Response, status
@@ -9,6 +7,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy import delete, select, tuple_
 
 from app.core.deps import CurrentUser, SettingsDep
+from app.core.pagination import decode_cursor, encode_cursor
 from app.db.session import SessionDep
 from app.models import Item
 from app.schemas.items import (
@@ -22,6 +21,7 @@ from app.schemas.items import (
     NoteCreate,
     UploadLimits,
 )
+from app.services.activity import add_event
 from app.services.images import InvalidImage
 from app.services.library import add_media
 from app.services.serving import original_response, thumbnail_response
@@ -112,20 +112,6 @@ async def create_note(
 # Listing, editing and deleting.
 
 
-def _encode_cursor(item: Item) -> str:
-    raw = f"{item.created_at.isoformat()}|{item.id}"
-    return base64.urlsafe_b64encode(raw.encode()).decode().rstrip("=")
-
-
-def _decode_cursor(cursor: str) -> tuple[datetime, uuid.UUID]:
-    try:
-        raw = base64.urlsafe_b64decode(cursor + "=" * (-len(cursor) % 4)).decode()
-        created_at, item_id = raw.split("|")
-        return datetime.fromisoformat(created_at), uuid.UUID(item_id)
-    except ValueError:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid cursor.") from None
-
-
 def _escape_like(text: str) -> str:
     # In LIKE patterns % and _ are wildcards; a search for "50%" should mean the text "50%".
     return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
@@ -149,7 +135,7 @@ async def list_items(
     if cursor:
         # Keyset pagination: continue strictly after the last item of the previous page, so
         # new uploads between page loads never cause duplicates or skipped items.
-        query = query.where(tuple_(Item.created_at, Item.id) < _decode_cursor(cursor))
+        query = query.where(tuple_(Item.created_at, Item.id) < decode_cursor(cursor))
 
     rows = list((await session.scalars(query)).all())
     has_more = len(rows) > limit
@@ -162,7 +148,7 @@ async def list_items(
             )
             for item in page
         ],
-        next_cursor=_encode_cursor(page[-1]) if has_more else None,
+        next_cursor=encode_cursor(page[-1].created_at, page[-1].id) if has_more else None,
     )
 
 
@@ -218,9 +204,14 @@ async def _delete_files(storage: Storage, item_ids: list[uuid.UUID]) -> None:
 
 @router.delete("/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_item(
-    item_id: uuid.UUID, session: SessionDep, settings: SettingsDep, _user: CurrentUser
+    item_id: uuid.UUID,
+    request: Request,
+    session: SessionDep,
+    settings: SettingsDep,
+    _user: CurrentUser,
 ) -> Response:
     item = await _get_item(session, item_id)
+    add_event(session, request, "item_deleted", item=item)
     await session.delete(item)
     await session.commit()
     # Only after the commit: if it had failed, the item would still exist with its files.
@@ -230,16 +221,22 @@ async def delete_item(
 
 @router.post("/bulk-delete")
 async def bulk_delete_items(
-    selection: BulkDelete, session: SessionDep, settings: SettingsDep, _user: CurrentUser
+    selection: BulkDelete,
+    request: Request,
+    session: SessionDep,
+    settings: SettingsDep,
+    _user: CurrentUser,
 ) -> BulkDeleteResult:
     """Delete several items at once. Ids that don't exist are ignored."""
     deleted = list(
-        (
-            await session.scalars(delete(Item).where(Item.id.in_(selection.ids)).returning(Item.id))
-        ).all()
+        await session.execute(
+            delete(Item).where(Item.id.in_(selection.ids)).returning(Item.id, Item.title)
+        )
     )
+    for row in deleted:
+        add_event(session, request, "item_deleted", item=row)
     await session.commit()
-    await _delete_files(Storage(settings.data_dir), deleted)
+    await _delete_files(Storage(settings.data_dir), [row.id for row in deleted])
     return BulkDeleteResult(deleted=len(deleted))
 
 

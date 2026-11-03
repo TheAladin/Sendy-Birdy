@@ -4,6 +4,26 @@
  */
 
 export interface paths {
+    "/api/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Activity
+         * @description Access events, newest first, a page at a time.
+         */
+        get: operations["list_activity_api_activity_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/login": {
         parameters: {
             query?: never;
@@ -364,6 +384,43 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AccessEventOut */
+        AccessEventOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Ip */
+            ip: string | null;
+            /** Item Id */
+            item_id: string | null;
+            /** Item Title */
+            item_title: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "share_viewed" | "file_downloaded" | "unlock_failed" | "login_succeeded" | "login_failed" | "share_revoked" | "item_deleted";
+            /** Share Id */
+            share_id: string | null;
+            /** Share Title */
+            share_title: string | null;
+            /** User Agent */
+            user_agent: string | null;
+        };
+        /** ActivityPage */
+        ActivityPage: {
+            /** Events */
+            events: components["schemas"]["AccessEventOut"][];
+            /** Next Cursor */
+            next_cursor: string | null;
+        };
         /** BulkDelete */
         BulkDelete: {
             /** Ids */
@@ -787,6 +844,43 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    list_activity_api_activity_get: {
+        parameters: {
+            query?: {
+                share_id?: string | null;
+                /** @description Any of these kinds */
+                kind?: ("share_viewed" | "file_downloaded" | "unlock_failed" | "login_succeeded" | "login_failed" | "share_revoked" | "item_deleted")[] | null;
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                sendy_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     login_api_auth_login_post: {
         parameters: {
             query?: never;
