@@ -80,6 +80,7 @@ def settings(tmp_path: Path, test_database_url: str) -> Settings:
         data_dir=tmp_path / "data",
         # Never the real build: whether `make build` was run mustn't change any test.
         frontend_dir=tmp_path / "dist",
+        app_mode="admin",
     )
 
 

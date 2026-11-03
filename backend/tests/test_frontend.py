@@ -7,25 +7,18 @@ from httpx import ASGITransport, AsyncClient
 
 from app.core.config import Settings
 from app.main import create_app
-
-INDEX = "<!doctype html><title>Sendy Birdy</title>"
-SCRIPT = "console.log('app')"
+from tests.frontend_build import ASSET, INDEX, SCRIPT, make_build
 
 
 @pytest.fixture
 def frontend_dir(settings: Settings) -> Path:
-    """A small stand-in for `make build`'s output."""
-    dist = settings.frontend_dir
-    (dist / "assets").mkdir(parents=True)
-    (dist / "index.html").write_text(INDEX)
-    (dist / "assets" / "index-Ab12Cd34.js").write_text(SCRIPT)
-    (dist / "favicon.svg").write_text("<svg xmlns='http://www.w3.org/2000/svg'/>")
-    return dist
+    return make_build(settings.frontend_dir)
 
 
 @pytest.fixture
 async def web(frontend_dir: Path, app: FastAPI) -> AsyncIterator[AsyncClient]:
     # A new app: the build has to exist when create_app() runs, and `app` was made before it.
+    assert app.state.settings.frontend_dir == frontend_dir
     built = create_app(app.state.settings)
     built.dependency_overrides = app.dependency_overrides
     async with AsyncClient(transport=ASGITransport(app=built), base_url="https://test") as client:
@@ -42,7 +35,7 @@ async def test_app_paths_get_index_html(web: AsyncClient, path: str) -> None:
 
 
 async def test_hashed_assets_are_cached_for_a_year(web: AsyncClient) -> None:
-    response = await web.get("/assets/index-Ab12Cd34.js")
+    response = await web.get(ASSET)
     assert response.status_code == 200
     assert response.text == SCRIPT
     assert response.headers["content-type"].startswith("text/javascript")

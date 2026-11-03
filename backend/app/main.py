@@ -8,7 +8,7 @@ from fastapi import FastAPI
 
 from app.core.config import Settings, get_settings
 from app.core.csrf import require_csrf_header
-from app.core.frontend import mount_frontend
+from app.core.frontend import SHARE_PAGES, mount_frontend
 from app.core.limits import LimitJsonBody
 from app.core.public import add_public_headers
 from app.core.ratelimit import RateLimits
@@ -19,11 +19,15 @@ from app.services.activity import cleanup_daily
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    cleanup = asyncio.create_task(cleanup_daily(app))
+    # Both processes share one database, so one cleaner is enough: the admin one, which always runs.
+    cleanup = None
+    if app.state.settings.app_mode == "admin":
+        cleanup = asyncio.create_task(cleanup_daily(app))
     yield
-    cleanup.cancel()
-    with suppress(asyncio.CancelledError):
-        await cleanup
+    if cleanup is not None:
+        cleanup.cancel()
+        with suppress(asyncio.CancelledError):
+            await cleanup
     await app.state.engine.dispose()
 
 
@@ -34,14 +38,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     """
     if settings is None:
         settings = get_settings()
+    admin = settings.app_mode == "admin"
 
     app = FastAPI(
         title="Sendy Birdy",
         version="0.1.0",
-        # Everything server-side lives under /api; the frontend owns all other paths.
-        docs_url="/api/docs",
+        # Everything server-side lives under /api; the frontend owns all other paths. The public
+        # app publishes no schema: there's no reason to hand visitors a map of the admin API.
+        docs_url="/api/docs" if admin else None,
+        swagger_ui_oauth2_redirect_url="/api/docs/oauth2-redirect",
         redoc_url=None,
-        openapi_url="/api/openapi.json",
+        openapi_url="/api/openapi.json" if admin else None,
         lifespan=lifespan,
     )
     app.state.settings = settings
@@ -52,12 +59,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.middleware("http")(require_csrf_header)
     app.middleware("http")(add_public_headers)
     app.add_middleware(LimitJsonBody)
-    app.include_router(health.router, prefix="/api")
-    app.include_router(auth.router, prefix="/api")
-    app.include_router(items.router, prefix="/api")
-    app.include_router(shares.router, prefix="/api")
+    # Admin routes aren't hidden in public mode, they're never added: nothing to misconfigure.
+    if admin:
+        app.include_router(health.router, prefix="/api")
+        app.include_router(auth.router, prefix="/api")
+        app.include_router(items.router, prefix="/api")
+        app.include_router(shares.router, prefix="/api")
+        app.include_router(activity.router, prefix="/api")
     app.include_router(public.router, prefix="/api")
-    app.include_router(activity.router, prefix="/api")
     # Last, so it only gets the paths no API route matched.
-    mount_frontend(app, settings.frontend_dir)
+    mount_frontend(app, settings.frontend_dir, pages=None if admin else SHARE_PAGES)
     return app

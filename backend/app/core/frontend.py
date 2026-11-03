@@ -19,20 +19,38 @@ IMMUTABLE = "public, max-age=31536000, immutable"
 REVALIDATE = "no-cache"
 
 
+# The only pages clients may open on the public app: /s/<token>.
+SHARE_PAGES = frozenset({"s"})
+
+
 def _is_api(path: str) -> bool:
     return path == "/api" or path.startswith("/api/")
 
 
 class SinglePageApp(StaticFiles):
-    """Static files, with index.html for any other path so the client-side router can handle it."""
+    """Static files, with index.html for other paths so the client-side router can handle them.
+
+    `pages` limits that fallback to paths of the form /<section>/<id> for the given sections;
+    None means every path.
+    """
+
+    def __init__(self, *, directory: Path, pages: frozenset[str] | None = None) -> None:
+        super().__init__(directory=directory)
+        self.pages = pages
+
+    def _is_page(self, parts: tuple[str, ...]) -> bool:
+        if self.pages is None:
+            return True
+        return len(parts) == 2 and parts[0] in self.pages
 
     async def get_response(self, path: str, scope: Scope) -> Response:
-        hashed = Path(path).parts[:1] == ("assets",)
+        parts = Path(path).parts
+        hashed = parts[:1] == ("assets",)
         try:
             response = await super().get_response(path, scope)
         except HTTPException as exc:
             # A missing asset is a real 404: answering with HTML would only hide a stale build.
-            if exc.status_code != 404 or hashed:
+            if exc.status_code != 404 or hashed or not self._is_page(parts):
                 raise
             response = await super().get_response("index.html", scope)
             hashed = False
@@ -50,10 +68,15 @@ class FrontendMount(Mount):
         return super().matches(scope)
 
 
-def mount_frontend(app: FastAPI, directory: Path) -> None:
-    """Serve the build in `directory`, if there is one. Must run after every API router is added."""
+def mount_frontend(app: FastAPI, directory: Path, pages: frozenset[str] | None = None) -> None:
+    """Serve the build in `directory`, if there is one. Must run after every API router is added.
+
+    In the public app every file of the build is still served, admin chunks included: they're the
+    open-source code, with no data in them, and the share page shares some of them.
+    """
     if not (directory / "index.html").is_file():
         # The usual case in development, where Vite serves the frontend.
         logger.info("No frontend build in %s; serving the API only.", directory)
         return
-    app.router.routes.append(FrontendMount("/", app=SinglePageApp(directory=directory)))
+    spa = SinglePageApp(directory=directory, pages=pages)
+    app.router.routes.append(FrontendMount("/", app=spa))

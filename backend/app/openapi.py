@@ -16,6 +16,8 @@ def schema() -> dict[str, object]:
         _env_file=None,
         secret_key="schema-export-only-not-a-real-secret",  # noqa: S106 (placeholder)
         database_url="postgresql+asyncpg://schema-export@localhost/unused",
+        # Explicit, so an APP_MODE in the environment can't produce the public app's empty schema.
+        app_mode="admin",
     )
     return create_app(settings).openapi()
 

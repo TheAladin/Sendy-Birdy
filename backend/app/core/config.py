@@ -2,6 +2,7 @@
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -19,6 +20,10 @@ class Settings(BaseSettings):
         # Other tools may keep their own variables in .env; don't fail on them.
         extra="ignore",
     )
+
+    # "admin" serves everything and must stay on localhost (or your private network). "public"
+    # serves only what clients need to open a share link: it's the one you expose to the internet.
+    app_mode: Literal["admin", "public"] = "admin"
 
     # Required: signs cookies and tokens. There is deliberately no default.
     secret_key: SecretStr = Field(min_length=32)
