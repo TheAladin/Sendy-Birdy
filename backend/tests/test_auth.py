@@ -152,4 +152,10 @@ async def test_reading_requests_do_not_need_the_csrf_header(client: AsyncClient)
 async def test_there_is_no_way_to_register(client: AsyncClient) -> None:
     paths = (await client.get("/api/openapi.json")).json()["paths"]
 
-    assert sorted(paths) == ["/api/auth/login", "/api/auth/logout", "/api/auth/me", "/api/health"]
+    assert sorted(paths) == [
+        "/api/auth/login",
+        "/api/auth/logout",
+        "/api/auth/me",
+        "/api/health",
+        "/api/items",
+    ]

@@ -106,3 +106,13 @@ async def admin(db_session: AsyncSession) -> User:
     db_session.add(user)
     await db_session.flush()
     return user
+
+
+@pytest.fixture
+async def signed_in(client: AsyncClient, admin: User) -> AsyncClient:
+    """The test client, signed in as the admin."""
+    response = await client.post(
+        "/api/auth/login", json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
+    )
+    assert response.status_code == 200
+    return client

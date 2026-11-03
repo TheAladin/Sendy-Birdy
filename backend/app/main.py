@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from app.core.config import Settings, get_settings
 from app.core.csrf import require_csrf_header
 from app.db.session import create_engine, create_sessionmaker
-from app.routers import auth, health
+from app.routers import auth, health, items
 
 
 @asynccontextmanager
@@ -41,4 +41,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.middleware("http")(require_csrf_header)
     app.include_router(health.router, prefix="/api")
     app.include_router(auth.router, prefix="/api")
+    app.include_router(items.router, prefix="/api")
     return app
