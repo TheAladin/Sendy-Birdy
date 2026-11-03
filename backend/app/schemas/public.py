@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.items import ItemKind
 
@@ -45,3 +45,20 @@ class ShareGone(BaseModel):
     """The 410 body: the link existed but can't be opened anymore, and why."""
 
     detail: ShareGoneDetail
+
+
+class ShareLockedDetail(BaseModel):
+    reason: Literal["locked"]
+    message: str
+    # All a locked link reveals, so the client knows whom to ask for the password.
+    shared_by: str
+
+
+class ShareLocked(BaseModel):
+    """The 403 body when a share needs its password first."""
+
+    detail: ShareLockedDetail
+
+
+class UnlockRequest(BaseModel):
+    password: str = Field(max_length=128)

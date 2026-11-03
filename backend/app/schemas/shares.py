@@ -1,7 +1,8 @@
 import uuid
 from datetime import UTC, datetime
+from typing import Annotated
 
-from pydantic import AwareDatetime, BaseModel, Field, field_validator
+from pydantic import AwareDatetime, BaseModel, Field, StringConstraints, field_validator
 
 from app.models.share import ShareStatus
 from app.schemas.items import MAX_NOTE_BYTES, ItemSummary, clean_title
@@ -28,6 +29,11 @@ def _check_item_ids(item_ids: list[uuid.UUID] | None) -> list[uuid.UUID] | None:
     if item_ids is not None and len(set(item_ids)) != len(item_ids):
         raise ValueError("An item can only appear once in a share.")
     return item_ids
+
+
+# Typed by the client from another message, so it can be short; Argon2 and rate limiting do
+# the protecting. The upper bound keeps hashing time reasonable.
+SharePassword = Annotated[str, StringConstraints(min_length=4, max_length=128)]
 
 
 class _ShareFields(BaseModel):
@@ -63,6 +69,7 @@ class ShareCreate(_ShareFields):
     # A timezone is required, so "midnight" can't silently mean the server's midnight.
     expires_at: AwareDatetime | None = Field(default=None, description="null: never expires.")
     allow_downloads: bool = True
+    password: SharePassword | None = Field(default=None, description="null: no password.")
 
 
 class ShareUpdate(_ShareFields):
@@ -73,6 +80,8 @@ class ShareUpdate(_ShareFields):
     message: str | None = None
     expires_at: AwareDatetime | None = None
     allow_downloads: bool | None = None
+    # A new password; null removes it.
+    password: SharePassword | None = None
 
 
 class ShareSummary(BaseModel):
@@ -84,6 +93,7 @@ class ShareSummary(BaseModel):
     expires_at: datetime | None
     revoked_at: datetime | None
     allow_downloads: bool
+    has_password: bool
     view_count: int
     last_viewed_at: datetime | None
     item_count: int

@@ -7,6 +7,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.config import Settings
 from app.core.deps import CurrentUser, SettingsDep
+from app.core.security import hash_password
 from app.db.session import SessionDep
 from app.models import Item, Share, ShareItem
 from app.schemas.items import ItemSummary
@@ -27,6 +28,7 @@ def _summary_fields(share: Share, item_count: int, settings: Settings) -> dict[s
         "expires_at": share.expires_at,
         "revoked_at": share.revoked_at,
         "allow_downloads": share.allow_downloads,
+        "has_password": share.password_hash is not None,
         "view_count": share.view_count,
         "last_viewed_at": share.last_viewed_at,
         "item_count": item_count,
@@ -83,6 +85,7 @@ async def create_share(
     """Create a link to these items, in this order."""
     await _check_items_exist(session, body.item_ids)
     share = Share(
+        password_hash=await hash_password(body.password) if body.password else None,
         title=body.title,
         message=body.message,
         expires_at=body.expires_at,
@@ -143,6 +146,9 @@ async def update_share(
         share.expires_at = changes.expires_at
     if changes.allow_downloads is not None:
         share.allow_downloads = changes.allow_downloads
+    # A new hash also signs out everyone who unlocked the link with the old password.
+    if "password" in sent:
+        share.password_hash = await hash_password(changes.password) if changes.password else None
     if changes.item_ids is not None:
         share.entries = _entries(changes.item_ids)
     await session.commit()

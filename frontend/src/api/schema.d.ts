@@ -271,6 +271,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/public/shares/{token}/unlock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Unlock Share
+         * @description Check a share's password; if right, a cookie lets this browser in for 12 hours.
+         */
+        post: operations["unlock_share_api_public_shares__token__unlock_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/shares": {
         parameters: {
             query?: never;
@@ -570,6 +590,11 @@ export interface components {
              * @description Markdown, shown above the items.
              */
             message?: string | null;
+            /**
+             * Password
+             * @description null: no password.
+             */
+            password?: string | null;
             /** Title */
             title: string;
         };
@@ -590,6 +615,25 @@ export interface components {
              */
             reason: "expired" | "revoked";
         };
+        /**
+         * ShareLocked
+         * @description The 403 body when a share needs its password first.
+         */
+        ShareLocked: {
+            detail: components["schemas"]["ShareLockedDetail"];
+        };
+        /** ShareLockedDetail */
+        ShareLockedDetail: {
+            /** Message */
+            message: string;
+            /**
+             * Reason
+             * @constant
+             */
+            reason: "locked";
+            /** Shared By */
+            shared_by: string;
+        };
         /** ShareOut */
         ShareOut: {
             /** Allow Downloads */
@@ -601,6 +645,8 @@ export interface components {
             created_at: string;
             /** Expires At */
             expires_at: string | null;
+            /** Has Password */
+            has_password: boolean;
             /**
              * Id
              * Format: uuid
@@ -644,6 +690,8 @@ export interface components {
             created_at: string;
             /** Expires At */
             expires_at: string | null;
+            /** Has Password */
+            has_password: boolean;
             /**
              * Id
              * Format: uuid
@@ -685,8 +733,15 @@ export interface components {
             item_ids?: string[] | null;
             /** Message */
             message?: string | null;
+            /** Password */
+            password?: string | null;
             /** Title */
             title?: string | null;
+        };
+        /** UnlockRequest */
+        UnlockRequest: {
+            /** Password */
+            password: string;
         };
         /**
          * UploadLimits
@@ -1234,6 +1289,15 @@ export interface operations {
                     "application/json": components["schemas"]["PublicShare"];
                 };
             };
+            /** @description The share needs its password first */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShareLocked"];
+                };
+            };
             /** @description No share has this token */
             404: {
                 headers: {
@@ -1289,7 +1353,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Downloads are turned off for this share */
+            /** @description Locked, or downloads are turned off for this share */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1337,6 +1401,71 @@ export interface operations {
         responses: {
             /** @description A WebP preview, at most 640x640 */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The share needs its password first */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShareLocked"];
+                };
+            };
+            /** @description No share has this token */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The share expired or was revoked */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShareGone"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unlock_share_api_public_shares__token__unlock_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UnlockRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Wrong password */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };

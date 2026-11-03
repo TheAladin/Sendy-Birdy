@@ -31,6 +31,8 @@ class Share(Model):
     allow_downloads: Mapped[bool] = mapped_column(Boolean, server_default=true())
     # Set once and never cleared: a revoked link stays dead; you create a new one instead.
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Argon2 hash; None when the link needs no password.
+    password_hash: Mapped[str | None] = mapped_column(String(255))
     view_count: Mapped[int] = mapped_column(Integer, server_default="0")
     last_viewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
