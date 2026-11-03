@@ -4,6 +4,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from app.services.text import excerpt
+
 MAX_NOTE_BYTES = 100 * 1024
 EXCERPT_LENGTH = 200
 
@@ -53,11 +55,8 @@ class ItemSummary(BaseModel):
         body = getattr(item, "body", None)
         if body is None:
             return item
-        excerpt = " ".join(body.split())
-        if len(excerpt) > EXCERPT_LENGTH:
-            excerpt = excerpt[:EXCERPT_LENGTH].rstrip() + "…"
         fields = {name: getattr(item, name) for name in cls.model_fields if hasattr(item, name)}
-        return {**fields, "excerpt": excerpt}
+        return {**fields, "excerpt": excerpt(body, EXCERPT_LENGTH)}
 
 
 class ItemOut(ItemSummary):

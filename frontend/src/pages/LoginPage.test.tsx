@@ -37,6 +37,7 @@ test("signing in sends the credentials and returns you to where you were going",
   const api = mockApi({
     "GET /api/auth/me": signedOut,
     "POST /api/auth/login": () => json(USER),
+    "GET /api/items": () => json({ items: [], next_cursor: null }),
   });
   const { router } = renderRoute("/login?next=%2F%3Ftab%3Drecent");
 
@@ -84,6 +85,7 @@ test("an unsafe next link is ignored after signing in", async () => {
   mockApi({
     "GET /api/auth/me": signedOut,
     "POST /api/auth/login": () => json(USER),
+    "GET /api/items": () => json({ items: [], next_cursor: null }),
   });
   const { router } = renderRoute("/login?next=%2F%2Fevil.example%2F");
 
@@ -93,7 +95,10 @@ test("an unsafe next link is ignored after signing in", async () => {
 });
 
 test("visiting the login page while signed in goes straight to the app", async () => {
-  mockApi({ "GET /api/auth/me": () => json(USER) });
+  mockApi({
+    "GET /api/auth/me": () => json(USER),
+    "GET /api/items": () => json({ items: [], next_cursor: null }),
+  });
 
   const { router } = renderRoute("/login");
 
@@ -104,6 +109,7 @@ test("visiting the login page while signed in goes straight to the app", async (
 test("signing out ends the session and returns to the login page", async () => {
   const api = mockApi({
     "GET /api/auth/me": () => json(USER),
+    "GET /api/items": () => json({ items: [], next_cursor: null }),
     "POST /api/auth/logout": () => new Response(null, { status: 204 }),
   });
   const { router, queryClient } = renderRoute("/");
@@ -117,7 +123,10 @@ test("signing out ends the session and returns to the login page", async () => {
 });
 
 test("a 401 from any request signs you out of the app", async () => {
-  mockApi({ "GET /api/auth/me": () => json(USER) });
+  mockApi({
+    "GET /api/auth/me": () => json(USER),
+    "GET /api/items": () => json({ items: [], next_cursor: null }),
+  });
   const { queryClient } = renderRoute("/");
   expect(await screen.findByRole("heading", { name: "Library" })).toBeInTheDocument();
 

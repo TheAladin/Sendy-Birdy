@@ -12,7 +12,10 @@ const USER = {
 };
 
 beforeEach(() => {
-  mockApi({ "GET /api/auth/me": () => json(USER) });
+  mockApi({
+    "GET /api/auth/me": () => json(USER),
+    "GET /api/items": () => json({ items: [], next_cursor: null }),
+  });
 });
 
 afterEach(() => {

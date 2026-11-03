@@ -124,7 +124,8 @@ async def test_lists_show_a_short_excerpt_of_notes_but_not_the_full_text(
     single = (await signed_in.get(f"/api/items/{note.id}")).json()
 
     assert "body" not in listed
-    assert listed["excerpt"].startswith("# Changes word word")
+    # Plain text: the Markdown "#" is gone.
+    assert listed["excerpt"].startswith("Changes word word")
     assert listed["excerpt"].endswith("…")
     assert len(listed["excerpt"]) <= 201
     assert single["body"] == long_body
