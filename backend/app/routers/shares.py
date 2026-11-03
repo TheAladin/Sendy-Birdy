@@ -1,7 +1,8 @@
 import uuid
 from datetime import UTC, datetime
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Response, status
+from fastapi import APIRouter, HTTPException, Query, Response, status
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import selectinload
 
@@ -11,7 +12,13 @@ from app.core.security import hash_password
 from app.db.session import SessionDep
 from app.models import Item, Share, ShareItem
 from app.schemas.items import ItemSummary
-from app.schemas.shares import ShareCreate, ShareOut, ShareSummary, ShareUpdate
+from app.schemas.shares import (
+    MAX_SHARE_ITEMS,
+    ShareCreate,
+    ShareOut,
+    ShareSummary,
+    ShareUpdate,
+)
 from app.services.sharing import share_counts, share_url
 
 router = APIRouter(prefix="/shares", tags=["shares"])
@@ -99,7 +106,13 @@ async def create_share(
 
 @router.get("")
 async def list_shares(
-    session: SessionDep, settings: SettingsDep, _user: CurrentUser
+    session: SessionDep,
+    settings: SettingsDep,
+    _user: CurrentUser,
+    item_id: Annotated[
+        list[uuid.UUID] | None,
+        Query(max_length=MAX_SHARE_ITEMS, description="Only shares containing any of these items"),
+    ] = None,
 ) -> list[ShareSummary]:
     """Every share, newest first. There's no paging: one person creates these by hand."""
     item_count = (
@@ -108,9 +121,13 @@ async def list_shares(
         .correlate(Share)
         .scalar_subquery()
     )
-    rows = await session.execute(
-        select(Share, item_count).order_by(Share.created_at.desc(), Share.id.desc())
-    )
+    query = select(Share, item_count).order_by(Share.created_at.desc(), Share.id.desc())
+    if item_id:
+        # Used to warn, before deleting items, which links will lose them.
+        query = query.where(
+            Share.id.in_(select(ShareItem.share_id).where(ShareItem.item_id.in_(item_id)))
+        )
+    rows = await session.execute(query)
     return [ShareSummary(**_summary_fields(share, count, settings)) for share, count in rows]
 
 

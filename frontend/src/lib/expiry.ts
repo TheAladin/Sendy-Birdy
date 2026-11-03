@@ -42,3 +42,23 @@ export function expiryDate(
     }
   }
 }
+
+/** "keep" leaves an existing link's expiry as it is. */
+export type ExpiryValue = ExpiryChoice | "keep";
+
+export interface ExpiryState {
+  choice: ExpiryValue;
+  customDate: string;
+}
+
+/** The moment chosen (null: never), or undefined for "keep". */
+export function chosenExpiry(state: ExpiryState): Date | null | undefined {
+  return state.choice === "keep" ? undefined : expiryDate(state.choice, state.customDate);
+}
+
+export function expiryError(state: ExpiryState): string | undefined {
+  if (state.choice !== "custom") return undefined;
+  if (!state.customDate) return "Pick the last day the link works.";
+  const date = chosenExpiry(state);
+  return date && date <= new Date() ? "Pick a date in the future." : undefined;
+}

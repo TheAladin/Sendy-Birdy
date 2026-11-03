@@ -117,6 +117,10 @@ export function useDeleteItems() {
     onSuccess: (_data, ids) => {
       for (const id of ids) queryClient.removeQueries({ queryKey: ["item", id] });
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["items"] }),
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["items"] });
+      // Links that contained them now hold fewer items.
+      void queryClient.invalidateQueries({ queryKey: ["shares"] });
+    },
   });
 }

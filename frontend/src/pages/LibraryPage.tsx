@@ -24,6 +24,7 @@ import { ItemCard, ItemCardSkeleton } from "../components/library/ItemCard";
 import { Lightbox } from "../components/library/Lightbox";
 import { NoteEditor } from "../components/library/NoteEditor";
 import { PageHeader } from "../components/PageHeader";
+import { AffectedShares } from "../components/shares/AffectedShares";
 import { ShareDialog } from "../components/shares/ShareDialog";
 import { Button, IconButton } from "../components/ui/Button";
 import { Dialog } from "../components/ui/Dialog";
@@ -257,7 +258,9 @@ export default function LibraryPage() {
             </Button>
           </>
         }
-      />
+      >
+        {deleting && <AffectedShares items={deleting} />}
+      </Dialog>
       {selecting && (
         <section
           aria-label="Selection"

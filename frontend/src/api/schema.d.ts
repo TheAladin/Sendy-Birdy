@@ -1500,7 +1500,10 @@ export interface operations {
     };
     list_shares_api_shares_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Only shares containing any of these items */
+                item_id?: string[] | null;
+            };
             header?: never;
             path?: never;
             cookie?: {

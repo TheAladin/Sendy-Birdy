@@ -366,3 +366,24 @@ async def test_everything_requires_signing_in(client: AsyncClient, method: str, 
     response = await client.request(method, path, json={"title": "T", "item_ids": []})
 
     assert response.status_code == 401
+
+
+async def test_shares_can_be_filtered_by_the_items_they_contain(
+    signed_in: AsyncClient, three: list[Item]
+) -> None:
+    a, b, c = three
+    await create(signed_in, [a, b], title="has A and B")
+    await create(signed_in, [b], title="has B")
+    await create(signed_in, [c], title="has C")
+
+    async def titles_for(*items: Item) -> set[str]:
+        response = await signed_in.get(
+            "/api/shares", params={"item_id": [str(item.id) for item in items]}
+        )
+        assert response.status_code == 200
+        return {share["title"] for share in response.json()}
+
+    assert await titles_for(a) == {"has A and B"}
+    assert await titles_for(b) == {"has A and B", "has B"}
+    assert await titles_for(a, c) == {"has A and B", "has C"}
+    assert await titles_for(Item(id=uuid.uuid4())) == set()
