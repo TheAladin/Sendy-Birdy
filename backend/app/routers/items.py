@@ -23,16 +23,9 @@ from app.schemas.items import (
     ItemUpdate,
     NoteCreate,
 )
-from app.services.images import InvalidImage, ProcessedImage, process_image
-from app.services.storage import (
-    EmptyUpload,
-    Storage,
-    UnsupportedFileType,
-    UploadTooLarge,
-    clean_filename,
-    title_from_filename,
-)
-from app.services.videos import VideoInfo, inspect_video
+from app.services.images import InvalidImage
+from app.services.library import add_media
+from app.services.storage import EmptyUpload, Storage, UnsupportedFileType, UploadTooLarge
 
 router = APIRouter(prefix="/items", tags=["items"])
 logger = logging.getLogger(__name__)
@@ -75,61 +68,20 @@ async def upload_item(
     if declared and declared.isdigit() and int(declared) > max_bytes:
         raise too_large
 
-    storage = Storage(settings.data_dir)
     try:
-        upload = await storage.receive(request.stream(), max_bytes)
+        item = await add_media(
+            session, Storage(settings.data_dir), request.stream(), filename, max_bytes
+        )
     except UploadTooLarge:
         raise too_large from None
     except UnsupportedFileType:
         raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, UNSUPPORTED_MESSAGE) from None
     except EmptyUpload:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "The file is empty.") from None
-
-    image: ProcessedImage | None = None
-    if upload.kind == "image":
-        try:
-            # Pillow work is CPU-heavy; a worker thread keeps other requests responsive.
-            image = await anyio.to_thread.run_sync(
-                process_image, upload.temp_path, upload.mime_type
-            )
-        except InvalidImage as error:
-            await storage.discard(upload)
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_CONTENT, IMAGE_ERRORS[str(error)]
-            ) from None
-        if image.rewritten:
-            upload = await storage.remeasure(upload)
-
-    video: VideoInfo | None = None
-    if upload.kind == "video":
-        video = await inspect_video(upload.temp_path)
-    thumbnail = image.thumbnail_webp if image else video.poster_webp if video else None
-    details = image or video
-
-    name = clean_filename(filename)
-    item = Item(
-        kind=upload.kind,
-        title=title_from_filename(name),
-        original_filename=name,
-        mime_type=upload.mime_type,
-        size_bytes=upload.size_bytes,
-        sha256=upload.sha256,
-        width=details.width if details else None,
-        height=details.height if details else None,
-        duration_s=video.duration_s if video else None,
-        has_thumbnail=thumbnail is not None,
-    )
-    try:
-        session.add(item)
-        await session.flush()  # assigns item.id
-        await storage.keep(upload, item.id)
-        if thumbnail:
-            await storage.save_thumbnail(item.id, thumbnail)
-        await session.commit()
-    except BaseException:
-        await storage.discard(upload)
-        await storage.delete_files(item.id)
-        raise
+    except InvalidImage as error:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT, IMAGE_ERRORS[str(error)]
+        ) from None
     return ItemOut.model_validate(item)
 
 

@@ -19,6 +19,8 @@ from app.services.admin import (
     find_admin,
     update_admin,
 )
+from app.services.demo import LibraryNotEmpty, seed_demo
+from app.services.storage import Storage
 
 
 def ask(prompt: str, clean: Callable[[str], str]) -> str:
@@ -82,6 +84,34 @@ def run_update_admin(args: argparse.Namespace) -> str:
     return asyncio.run(with_session(work))
 
 
+def run_seed_demo(args: argparse.Namespace) -> str:
+    settings = get_settings()
+
+    async def work(session: AsyncSession) -> str:
+        try:
+            items = await seed_demo(
+                session,
+                Storage(settings.data_dir),
+                settings.max_upload_mb * 1024 * 1024,
+                force=args.force,
+            )
+        except LibraryNotEmpty:
+            raise AdminError(
+                "The library isn't empty, so no demo content was added (use --force to add it "
+                "anyway)."
+            ) from None
+        counts = {
+            kind: sum(item.kind == kind for item in items) for kind in ("image", "video", "note")
+        }
+        video_note = "" if counts["video"] else " (no video: ffmpeg isn't installed)"
+        return (
+            f"Added {counts['image']} screenshots, {counts['note']} notes and "
+            f"{counts['video']} video{video_note}."
+        )
+
+    return asyncio.run(with_session(work))
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -m app.cli", description="Sendy Birdy admin tools"
@@ -99,6 +129,10 @@ def build_parser() -> argparse.ArgumentParser:
     update.add_argument("--name", help="new display name")
     update.add_argument("--password", action="store_true", help="set a new password (prompted)")
     update.set_defaults(run=run_update_admin)
+
+    demo = commands.add_parser("seed-demo", help="fill an empty library with demo content")
+    demo.add_argument("--force", action="store_true", help="add it even if the library has items")
+    demo.set_defaults(run=run_seed_demo)
     return parser
 
 

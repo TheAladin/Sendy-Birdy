@@ -26,6 +26,7 @@ Open <http://localhost:5173>. The page shows "API: ok" once the backend is up. A
 | `make db-setup` | Create the `sendy` PostgreSQL role and the `sendy` / `sendy_test` databases, and add their URLs to `.env` |
 | `make db-migrate` | Apply database migrations |
 | `make create-admin` | Create the admin account. Change it later with `uv run python -m app.cli update-admin` (from `backend/`; see `--help`) |
+| `make seed-demo` | Fill an empty library with demo screenshots, notes and a short video |
 | `make dev` | Run the API (port 8000) and the frontend (port 5173) together |
 | `make dev-api` / `make dev-web` | Run only one of them |
 | `make check` | Run every linter, type check and test |

@@ -5,7 +5,7 @@ SHELL := bash
 BACKEND := backend
 FRONTEND := frontend
 
-.PHONY: help install db-setup db-migrate create-admin gen-api dev dev-api dev-web check fmt
+.PHONY: help install db-setup db-migrate create-admin seed-demo gen-api dev dev-api dev-web check fmt
 
 help: ## List available commands
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "} {printf "  make %-10s %s\n", $$1, $$2}'
@@ -29,6 +29,9 @@ db-migrate: ## Apply database migrations
 
 create-admin: ## Create your admin account (prompts for email, name and password)
 	cd $(BACKEND) && uv run python -m app.cli create-admin
+
+seed-demo: ## Fill an empty library with demo screenshots, notes and a video
+	cd $(BACKEND) && uv run python -m app.cli seed-demo
 
 dev: ## Run the API and the frontend together (Ctrl+C stops both)
 	@$(MAKE) --no-print-directory -j2 dev-api dev-web
