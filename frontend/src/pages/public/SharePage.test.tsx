@@ -154,14 +154,124 @@ test.each([
   expect(api).toHaveBeenCalledTimes(1);
 });
 
-test("a locked link says who to ask for the password", async () => {
-  setup(() => json({ detail: { reason: "locked", message: "", shared_by: "Alex Martin" } }, 403));
+const LOCKED = () =>
+  json({ detail: { reason: "locked", message: "", shared_by: "Alex Martin" } }, 403);
+
+/** A server that stays locked until the unlock endpoint accepts "blue heron". */
+function lockedServer(unlockAnswer?: (password: string) => Response | undefined) {
+  let unlocked = false;
+  const api = mockApi({
+    [`GET ${PATH}`]: () => (unlocked ? json(SHARE) : LOCKED()),
+    [`POST ${PATH}/unlock`]: async (request) => {
+      const { password } = (await request.json()) as { password: string };
+      const special = unlockAnswer?.(password);
+      if (special) return special;
+      if (password !== "blue heron") return json({ detail: "That password isn't right." }, 401);
+      unlocked = true;
+      return new Response(null, { status: 204 });
+    },
+  });
+  return api;
+}
+
+test("a locked link asks for the password, and opens with the right one", async () => {
+  const user = userEvent.setup();
+  const api = lockedServer();
   renderRoute(`/s/${TOKEN}`);
 
   expect(
     await screen.findByRole("heading", { name: "This link is protected by a password" }),
   ).toBeInTheDocument();
   expect(screen.getByText(/Alex Martin added a password/)).toBeInTheDocument();
+  // Nothing about the share itself is shown before unlocking.
+  expect(screen.queryByText("Homepage redesign: round 2")).not.toBeInTheDocument();
+  const field = screen.getByLabelText("Password");
+  expect(field).toHaveFocus();
+  expect(field).toHaveAttribute("type", "password");
+
+  await user.type(field, "grey heron{Enter}");
+  expect(await screen.findByText(/That password isn't right/)).toBeInTheDocument();
+  expect(field).toHaveAccessibleDescription(
+    "That password isn't right. Ask Alex Martin to check it.",
+  );
+
+  await user.clear(field);
+  await user.type(field, "blue heron{Enter}");
+
+  expect(
+    await screen.findByRole("heading", { level: 1, name: "Homepage redesign: round 2" }),
+  ).toBeInTheDocument();
+  const requests = api.mock.calls.map(([r]) => r as Request);
+  expect(requests.map((r) => `${r.method} ${new URL(r.url).pathname}`)).toEqual([
+    `GET ${PATH}`,
+    `POST ${PATH}/unlock`,
+    `POST ${PATH}/unlock`,
+    `GET ${PATH}`,
+  ]);
+  // The page sends the CSRF header like every other request.
+  expect(requests[1]?.headers.get("X-Requested-With")).toBe("fetch");
+});
+
+test("an empty password isn't sent", async () => {
+  const user = userEvent.setup();
+  const api = lockedServer();
+  renderRoute(`/s/${TOKEN}`);
+
+  await user.click(await screen.findByRole("button", { name: "Open" }));
+
+  expect(screen.getByLabelText("Password")).toHaveAccessibleDescription("Enter the password.");
+  expect(api).toHaveBeenCalledTimes(1);
+});
+
+test("the password can be shown while typing", async () => {
+  const user = userEvent.setup();
+  lockedServer();
+  renderRoute(`/s/${TOKEN}`);
+
+  await user.click(await screen.findByRole("button", { name: "Show password" }));
+
+  expect(screen.getByLabelText("Password")).toHaveAttribute("type", "text");
+  expect(screen.getByRole("button", { name: "Hide password" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+});
+
+test("too many attempts blocks the form until the wait is over", async () => {
+  const user = userEvent.setup();
+  lockedServer(() => json({ detail: "Too many attempts" }, 429, { "Retry-After": "2" }));
+  renderRoute(`/s/${TOKEN}`);
+
+  await user.type(await screen.findByLabelText("Password"), "guess{Enter}");
+
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "Too many attempts. Try again in 2 seconds.",
+  );
+  const open = screen.getByRole("button", { name: "Open" });
+  expect(open).toBeDisabled();
+  // The countdown ends and the form works again.
+  await waitFor(() => expect(open).toBeEnabled(), { timeout: 4000 });
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+});
+
+test("a link revoked while the form is open says so", async () => {
+  const user = userEvent.setup();
+  let revoked = false;
+  mockApi({
+    [`GET ${PATH}`]: () =>
+      revoked ? json({ detail: { reason: "revoked", message: "" } }, 410) : LOCKED(),
+    [`POST ${PATH}/unlock`]: () => {
+      revoked = true;
+      return json({ detail: { reason: "revoked", message: "" } }, 410);
+    },
+  });
+  renderRoute(`/s/${TOKEN}`);
+
+  await user.type(await screen.findByLabelText("Password"), "blue heron{Enter}");
+
+  expect(
+    await screen.findByRole("heading", { name: "This link is no longer available" }),
+  ).toBeInTheDocument();
 });
 
 test("a network failure can be retried", { timeout: 10_000 }, async () => {

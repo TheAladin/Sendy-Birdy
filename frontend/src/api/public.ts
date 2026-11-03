@@ -1,6 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "./client";
+import { ApiError, apiError } from "./errors";
 import type { components } from "./schema";
 
 export type PublicShare = components["schemas"]["PublicShare"];
@@ -59,5 +60,29 @@ export function usePublicShare(token: string) {
     refetchOnWindowFocus: false,
     // Retrying only helps with network trouble, not with a link that's gone.
     retry: (count, error) => !(error instanceof ShareUnavailable) && count < 2,
+  });
+}
+
+/**
+ * Sends a share's password. On success the server sets a cookie for this link only, and the
+ * share is loaded again, now with its content. Errors are ApiErrors: 401 for a wrong password,
+ * 429 (with retryAfterSeconds) after too many attempts.
+ */
+export function useUnlockShare(token: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (password: string) => {
+      const { response } = await api.POST("/api/public/shares/{token}/unlock", {
+        params: { path: { token } },
+        body: { password },
+      });
+      if (!response.ok) throw apiError(response);
+    },
+    // Also after a 404/410 (deleted or revoked meanwhile): reloading shows why.
+    onSettled: (_data, error) => {
+      if (!error || (error instanceof ApiError && [404, 410].includes(error.status))) {
+        return queryClient.invalidateQueries({ queryKey: ["public-share", token] });
+      }
+    },
   });
 }

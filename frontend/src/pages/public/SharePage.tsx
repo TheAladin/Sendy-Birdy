@@ -1,4 +1,4 @@
-import { Clock, Download, Expand, Link2Off, Lock, SearchX, WifiOff } from "lucide-react";
+import { Clock, Download, Expand, Link2Off, SearchX, WifiOff } from "lucide-react";
 import { type ReactNode, useCallback, useState } from "react";
 import { useParams } from "react-router";
 
@@ -14,6 +14,7 @@ import {
 import { Logo } from "../../components/brand/Logo";
 import { Markdown } from "../../components/Markdown";
 import { ImageViewer } from "../../components/public/ImageViewer";
+import { UnlockForm } from "../../components/public/UnlockForm";
 import { Button } from "../../components/ui/Button";
 import { Skeleton } from "../../components/ui/Display";
 import { formatBytes, formatDateTime, formatDuration, formatRelative } from "../../lib/format";
@@ -58,7 +59,13 @@ function Notice({
   );
 }
 
-function Unavailable({ error, onRetry }: { error: Error; onRetry: () => void }) {
+interface UnavailableProps {
+  token: string;
+  error: Error;
+  onRetry: () => void;
+}
+
+function Unavailable({ token, error, onRetry }: UnavailableProps) {
   if (!(error instanceof ShareUnavailable)) {
     return (
       <Notice icon={<WifiOff />} title="This page couldn't be loaded">
@@ -89,14 +96,7 @@ function Unavailable({ error, onRetry }: { error: Error; onRetry: () => void }) 
         </Notice>
       );
     case "locked":
-      return (
-        <Notice icon={<Lock />} title="This link is protected by a password">
-          <p>
-            {error.state.sharedBy ? `${error.state.sharedBy} added a password.` : ""} Ask them for
-            it.
-          </p>
-        </Notice>
-      );
+      return <UnlockForm token={token} sharedBy={error.state.sharedBy} />;
   }
 }
 
@@ -292,7 +292,7 @@ export default function SharePage() {
       {share.data ? (
         <ShareContent share={share.data} token={token} />
       ) : share.error ? (
-        <Unavailable error={share.error} onRetry={() => void share.refetch()} />
+        <Unavailable token={token} error={share.error} onRetry={() => void share.refetch()} />
       ) : (
         <Loading />
       )}

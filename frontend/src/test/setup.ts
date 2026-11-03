@@ -1,6 +1,11 @@
 import "@testing-library/jest-dom/vitest";
-import { cleanup } from "@testing-library/react";
+import { cleanup, configure } from "@testing-library/react";
 import { afterEach } from "vitest";
+
+// Pages load on demand, and the first test in a file waits for its page to be compiled. That
+// takes well under a second normally, but more on a busy machine or CI runner. findBy… still
+// resolves as soon as the element appears; this only raises the ceiling from 1 s.
+configure({ asyncUtilTimeout: 5000 });
 
 afterEach(() => {
   cleanup();
