@@ -1,5 +1,5 @@
 import { Film, Image as ImageIcon, Play, StickyNote } from "lucide-react";
-import { useId } from "react";
+import { type ReactNode, useId } from "react";
 
 import { type ItemSummary, thumbnailUrl } from "../../api/items";
 import { formatBytes, formatDateTime, formatDuration, formatRelative } from "../../lib/format";
@@ -47,7 +47,7 @@ function Preview({ item }: { item: ItemSummary }) {
   );
 }
 
-export function ItemCard({ item }: { item: ItemSummary }) {
+export function ItemCard({ item, actions }: { item: ItemSummary; actions?: ReactNode }) {
   const titleId = useId();
   const { label, icon: KindIcon } = KIND[item.kind];
   const created = new Date(item.created_at);
@@ -66,6 +66,7 @@ export function ItemCard({ item }: { item: ItemSummary }) {
           <KindIcon className="size-3" aria-hidden="true" />
           {label}
         </span>
+        {actions && <div className="absolute top-2 right-2 flex gap-1">{actions}</div>}
         {item.kind === "video" && (
           <>
             <span className="absolute inset-0 grid place-items-center" aria-hidden="true">

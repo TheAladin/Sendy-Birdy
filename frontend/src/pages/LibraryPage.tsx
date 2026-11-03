@@ -1,11 +1,12 @@
-import { ImagePlus, SearchX, Upload } from "lucide-react";
+import { ImagePlus, NotebookPen, Pencil, SearchX, Upload } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 
 import { type ItemKind, useItems } from "../api/items";
 import { ItemCard, ItemCardSkeleton } from "../components/library/ItemCard";
+import { NoteEditor } from "../components/library/NoteEditor";
 import { PageHeader } from "../components/PageHeader";
-import { Button } from "../components/ui/Button";
+import { Button, IconButton } from "../components/ui/Button";
 import { EmptyState, Spinner } from "../components/ui/Display";
 import { Input } from "../components/ui/Input";
 import { DropAndPaste } from "../features/uploads/DropAndPaste";
@@ -39,6 +40,8 @@ export default function LibraryPage() {
     (files: File[]) => queue.add(files, (file) => nameForUpload(file)),
     [queue],
   );
+  // undefined: closed; "new": creating; otherwise the id of the note being edited.
+  const [editingNote, setEditingNote] = useState<string | undefined>();
   const uploadButton = (
     <Button onClick={() => filePicker.current?.click()}>
       <Upload className="size-4" aria-hidden="true" />
@@ -96,8 +99,22 @@ export default function LibraryPage() {
       <PageHeader
         title="Library"
         description="Your screenshots, videos and notes."
-        actions={uploadButton}
+        actions={
+          <>
+            <Button variant="secondary" onClick={() => setEditingNote("new")}>
+              <NotebookPen className="size-4" aria-hidden="true" />
+              New note
+            </Button>
+            {uploadButton}
+          </>
+        }
       />
+      {editingNote && (
+        <NoteEditor
+          noteId={editingNote === "new" ? undefined : editingNote}
+          onClose={() => setEditingNote(undefined)}
+        />
+      )}
       <input
         ref={filePicker}
         type="file"
@@ -203,7 +220,20 @@ export default function LibraryPage() {
           <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {results.map((item) => (
               <li key={item.id}>
-                <ItemCard item={item} />
+                <ItemCard
+                  item={item}
+                  actions={
+                    item.kind === "note" && (
+                      <IconButton
+                        label={`Edit ${item.title}`}
+                        icon={<Pencil className="size-4" />}
+                        variant="secondary"
+                        className="size-8 shadow-sm"
+                        onClick={() => setEditingNote(item.id)}
+                      />
+                    )
+                  }
+                />
               </li>
             ))}
           </ul>
