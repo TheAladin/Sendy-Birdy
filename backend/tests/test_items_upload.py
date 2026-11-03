@@ -8,8 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
 from app.models import Item
+from tests import media
 
-PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 200
+PNG = media.png()
 MP4 = b"\x00\x00\x00\x18ftypmp42" + b"\x00" * 200
 MOV = b"\x00\x00\x00\x14ftypqt  " + b"\x00" * 200
 HTML = b"<!doctype html><html><script>alert(document.cookie)</script></html>"
@@ -44,20 +45,20 @@ async def test_uploading_an_image_stores_it_under_its_id(
     assert body["mime_type"] == "image/png"
     assert body["title"] == "Hero shot"
     assert body["original_filename"] == "Hero shot.png"
-    assert body["size_bytes"] == len(PNG)
     stored = settings.data_dir / "media" / "originals" / body["id"]
-    assert stored_files(settings) == [stored]
-    assert stored.read_bytes() == PNG
+    thumb = settings.data_dir / "media" / "thumbs" / f"{body['id']}.webp"
+    assert stored_files(settings) == sorted([stored, thumb])
+    assert body["size_bytes"] == stored.stat().st_size
 
 
 async def test_the_content_hash_is_recorded(
     signed_in: AsyncClient, db_session: AsyncSession
 ) -> None:
-    response = await upload(signed_in, PNG, "hero.png")
+    response = await upload(signed_in, MP4, "demo.mp4")
 
     item = await db_session.get(Item, response.json()["id"])
     assert item is not None
-    assert item.sha256 == hashlib.sha256(PNG).hexdigest()
+    assert item.sha256 == hashlib.sha256(MP4).hexdigest()
 
 
 @pytest.mark.parametrize(
