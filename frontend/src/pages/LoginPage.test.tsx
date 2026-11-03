@@ -42,7 +42,7 @@ test("signing in sends the credentials and returns you to where you were going",
 
   await signIn();
 
-  expect(await screen.findByRole("heading", { name: "Signed in as Alex" })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "Library" })).toBeInTheDocument();
   expect(router.state.location.pathname + router.state.location.search).toBe("/?tab=recent");
   const login = api.mock.calls
     .map(([request]) => request as Request)
@@ -97,7 +97,7 @@ test("visiting the login page while signed in goes straight to the app", async (
 
   const { router } = renderRoute("/login");
 
-  expect(await screen.findByRole("heading", { name: "Signed in as Alex" })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "Library" })).toBeInTheDocument();
   expect(router.state.location.pathname).toBe("/");
 });
 
@@ -119,7 +119,7 @@ test("signing out ends the session and returns to the login page", async () => {
 test("a 401 from any request signs you out of the app", async () => {
   mockApi({ "GET /api/auth/me": () => json(USER) });
   const { queryClient } = renderRoute("/");
-  expect(await screen.findByRole("heading", { name: "Signed in as Alex" })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "Library" })).toBeInTheDocument();
 
   // Simulates any later request finding the session expired.
   const { ApiError } = await import("../api/errors");

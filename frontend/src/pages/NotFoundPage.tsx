@@ -1,8 +1,10 @@
 import { Link } from "react-router";
 
 import { LogoMark } from "../components/brand/Logo";
+import { useDocumentTitle } from "../lib/useDocumentTitle";
 
 export default function NotFoundPage() {
+  useDocumentTitle("Page not found");
   return (
     <main className="grid min-h-dvh place-items-center p-6 text-center">
       <div>

@@ -10,6 +10,7 @@ import { Card } from "../components/ui/Display";
 import { Field } from "../components/ui/Field";
 import { Input } from "../components/ui/Input";
 import { safeRedirect } from "../lib/safeRedirect";
+import { useDocumentTitle } from "../lib/useDocumentTitle";
 
 function describeError(error: Error): string {
   if (!(error instanceof ApiError)) return "Can't reach the server. Check your connection.";
@@ -22,6 +23,7 @@ function describeError(error: Error): string {
 }
 
 export default function LoginPage() {
+  useDocumentTitle("Sign in");
   const me = useMe();
   const login = useLogin();
   const navigate = useNavigate();
