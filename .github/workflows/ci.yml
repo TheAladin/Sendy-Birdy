@@ -79,3 +79,23 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
+
+  api-types:
+    name: API types up to date
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        run: |
+          (cd backend && uv sync --locked)
+          (cd frontend && npm ci)
+      - name: Regenerate frontend API types
+        run: make gen-api
+      - name: Fail if they differ from the committed ones
+        run: git diff --exit-code frontend/src/api/schema.d.ts || (echo "::error::API types are out of date. Run 'make gen-api' and commit the result." && exit 1)

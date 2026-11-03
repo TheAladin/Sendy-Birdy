@@ -1,11 +1,16 @@
-export interface HealthResponse {
-  status: "ok";
-}
+import { useQuery } from "@tanstack/react-query";
 
-export async function fetchHealth(signal?: AbortSignal): Promise<HealthResponse> {
-  const response = await fetch("/api/health", { signal });
-  if (!response.ok) {
-    throw new Error(`Health check failed: HTTP ${response.status}`);
-  }
-  return (await response.json()) as HealthResponse;
+import { api } from "./client";
+
+export function useHealth() {
+  return useQuery({
+    queryKey: ["health"],
+    queryFn: async ({ signal }) => {
+      const { data } = await api.GET("/api/health", { signal });
+      if (!data) throw new Error("Health check failed");
+      return data;
+    },
+    // A status indicator should say "unreachable" quickly rather than retry for seconds.
+    retry: false,
+  });
 }

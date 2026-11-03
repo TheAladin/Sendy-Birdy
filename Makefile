@@ -5,7 +5,7 @@ SHELL := bash
 BACKEND := backend
 FRONTEND := frontend
 
-.PHONY: help install db-setup db-migrate create-admin dev dev-api dev-web check fmt
+.PHONY: help install db-setup db-migrate create-admin gen-api dev dev-api dev-web check fmt
 
 help: ## List available commands
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "} {printf "  make %-10s %s\n", $$1, $$2}'
@@ -38,6 +38,12 @@ dev-api: ## Run only the API (http://127.0.0.1:8000)
 
 dev-web: ## Run only the frontend (http://localhost:5173)
 	cd $(FRONTEND) && npm run dev
+
+# The schema goes through a temporary file inside node_modules, which git ignores.
+gen-api: ## Regenerate the frontend's API types from the backend's OpenAPI schema
+	mkdir -p $(FRONTEND)/node_modules/.cache
+	cd $(BACKEND) && uv run python -m app.openapi > ../$(FRONTEND)/node_modules/.cache/openapi.json
+	cd $(FRONTEND) && npx openapi-typescript node_modules/.cache/openapi.json -o src/api/schema.d.ts
 
 check: ## Run every linter, type check and test
 	cd $(BACKEND) && uv run ruff check && uv run ruff format --check && uv run pytest
