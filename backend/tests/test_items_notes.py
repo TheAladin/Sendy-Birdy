@@ -51,7 +51,7 @@ async def test_the_limit_counts_bytes_not_characters(signed_in: AsyncClient) -> 
 @pytest.mark.parametrize(
     ("title", "body", "message"),
     [
-        ("   ", MARKDOWN, "needs a title"),
+        ("   ", MARKDOWN, "title can't be empty"),
         ("Empty", "  \n ", "can't be empty"),
         ("x" * 201, MARKDOWN, "at most 200"),
     ],

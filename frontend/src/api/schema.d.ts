@@ -82,13 +82,37 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * List Items
+         * @description The library, newest first, a page at a time.
+         */
+        get: operations["list_items_api_items_get"];
         put?: never;
         /**
          * Upload Item
          * @description Upload one image or video. The request body is the raw file (not a multipart form).
          */
         post: operations["upload_item_api_items_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/items/bulk-delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bulk Delete Items
+         * @description Delete several items at once. Ids that don't exist are ignored.
+         */
+        post: operations["bulk_delete_items_api_items_bulk_delete_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -115,10 +139,39 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/items/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Item */
+        get: operations["get_item_api_items__item_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Item */
+        delete: operations["delete_item_api_items__item_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Item */
+        patch: operations["update_item_api_items__item_id__patch"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** BulkDelete */
+        BulkDelete: {
+            /** Ids */
+            ids: string[];
+        };
+        /** BulkDeleteResult */
+        BulkDeleteResult: {
+            /** Deleted */
+            deleted: number;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -132,7 +185,10 @@ export interface components {
              */
             status: "ok";
         };
-        /** ItemOut */
+        /**
+         * ItemOut
+         * @description A single item in full, including a note's Markdown text.
+         */
         ItemOut: {
             /** Body */
             body: string | null;
@@ -143,6 +199,8 @@ export interface components {
             created_at: string;
             /** Duration S */
             duration_s: number | null;
+            /** Excerpt */
+            excerpt?: string | null;
             /** Has Thumbnail */
             has_thumbnail: boolean;
             /** Height */
@@ -165,8 +223,77 @@ export interface components {
             size_bytes: number | null;
             /** Title */
             title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
             /** Width */
             width: number | null;
+        };
+        /** ItemPage */
+        ItemPage: {
+            /** Items */
+            items: components["schemas"]["ItemSummary"][];
+            /** Next Cursor */
+            next_cursor: string | null;
+        };
+        /**
+         * ItemSummary
+         * @description An item as shown in lists: everything except a note's full text.
+         */
+        ItemSummary: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Duration S */
+            duration_s: number | null;
+            /** Excerpt */
+            excerpt?: string | null;
+            /** Has Thumbnail */
+            has_thumbnail: boolean;
+            /** Height */
+            height: number | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "image" | "video" | "note";
+            /** Mime Type */
+            mime_type: string | null;
+            /** Original Filename */
+            original_filename: string | null;
+            /** Size Bytes */
+            size_bytes: number | null;
+            /** Title */
+            title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Width */
+            width: number | null;
+        };
+        /**
+         * ItemUpdate
+         * @description Change an item's title, or a note's text. Omitted fields stay as they are.
+         */
+        ItemUpdate: {
+            /**
+             * Body
+             * @description Notes only.
+             */
+            body?: string | null;
+            /** Title */
+            title?: string | null;
         };
         /** LoginRequest */
         LoginRequest: {
@@ -332,6 +459,43 @@ export interface operations {
             };
         };
     };
+    list_items_api_items_get: {
+        parameters: {
+            query?: {
+                kind?: ("image" | "video" | "note") | null;
+                /** @description Search in titles */
+                q?: string | null;
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                sendy_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItemPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     upload_item_api_items_post: {
         parameters: {
             query: {
@@ -384,6 +548,41 @@ export interface operations {
             };
         };
     };
+    bulk_delete_items_api_items_bulk_delete_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                sendy_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkDelete"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkDeleteResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     create_note_api_items_notes_post: {
         parameters: {
             query?: never;
@@ -414,6 +613,107 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_item_api_items__item_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: {
+                sendy_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItemOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_item_api_items__item_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: {
+                sendy_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_item_api_items__item_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: {
+                sendy_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ItemUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItemOut"];
+                };
             };
             /** @description Validation Error */
             422: {

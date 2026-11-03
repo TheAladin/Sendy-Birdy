@@ -1,4 +1,14 @@
-from sqlalchemy import BigInteger, Boolean, CheckConstraint, Float, Integer, String, Text, false
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    CheckConstraint,
+    Float,
+    Index,
+    Integer,
+    String,
+    Text,
+    false,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Model
@@ -17,6 +27,15 @@ class Item(Model):
             "kind = 'note' OR (original_filename IS NOT NULL AND mime_type IS NOT NULL"
             " AND size_bytes IS NOT NULL AND sha256 IS NOT NULL)",
             name="media_has_file",
+        ),
+        # Newest-first listing walks this index (in reverse) instead of sorting the table.
+        Index("ix_items_created_at_id", "created_at", "id"),
+        # Trigram index: makes case-insensitive "contains" search on titles fast.
+        Index(
+            "ix_items_title_trgm",
+            "title",
+            postgresql_using="gin",
+            postgresql_ops={"title": "gin_trgm_ops"},
         ),
     )
 

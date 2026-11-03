@@ -158,5 +158,7 @@ async def test_there_is_no_way_to_register(client: AsyncClient) -> None:
         "/api/auth/me",
         "/api/health",
         "/api/items",
+        "/api/items/bulk-delete",
         "/api/items/notes",
+        "/api/items/{item_id}",
     ]
