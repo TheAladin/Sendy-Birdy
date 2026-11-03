@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Query, Request, status
 from app.core.deps import CurrentUser, SettingsDep
 from app.db.session import SessionDep
 from app.models import Item
-from app.schemas.items import ItemOut
+from app.schemas.items import ItemOut, NoteCreate
 from app.services.images import InvalidImage, ProcessedImage, process_image
 from app.services.storage import (
     EmptyUpload,
@@ -19,6 +19,7 @@ from app.services.storage import (
 from app.services.videos import VideoInfo, inspect_video
 
 router = APIRouter(prefix="/items", tags=["items"])
+
 
 IMAGE_ERRORS = {
     "damaged": "This image is damaged or incomplete, so it can't be shown.",
@@ -113,3 +114,20 @@ async def upload_item(
         await storage.delete_files(item.id)
         raise
     return ItemOut.model_validate(item)
+
+
+@router.post(
+    "/notes",
+    status_code=status.HTTP_201_CREATED,
+    responses={413: {"description": "Request too large"}},
+)
+async def create_note(
+    body: NoteCreate,
+    session: SessionDep,
+    _user: CurrentUser,
+) -> ItemOut:
+    """Create a Markdown note. Stored in the database; there's no file."""
+    note = Item(kind="note", title=body.title, body=body.body)
+    session.add(note)
+    await session.commit()
+    return ItemOut.model_validate(note)

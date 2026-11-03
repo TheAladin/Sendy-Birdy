@@ -95,6 +95,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/items/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Note
+         * @description Create a Markdown note. Stored in the database; there's no file.
+         */
+        post: operations["create_note_api_items_notes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -114,6 +134,8 @@ export interface components {
         };
         /** ItemOut */
         ItemOut: {
+            /** Body */
+            body: string | null;
             /**
              * Created At
              * Format: date-time
@@ -134,13 +156,13 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "image" | "video";
+            kind: "image" | "video" | "note";
             /** Mime Type */
-            mime_type: string;
+            mime_type: string | null;
             /** Original Filename */
-            original_filename: string;
+            original_filename: string | null;
             /** Size Bytes */
-            size_bytes: number;
+            size_bytes: number | null;
             /** Title */
             title: string;
             /** Width */
@@ -152,6 +174,16 @@ export interface components {
             email: string;
             /** Password */
             password: string;
+        };
+        /** NoteCreate */
+        NoteCreate: {
+            /**
+             * Body
+             * @description Markdown. At most 100 KB once encoded as UTF-8.
+             */
+            body: string;
+            /** Title */
+            title: string;
         };
         /** UserOut */
         UserOut: {
@@ -349,6 +381,48 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    create_note_api_items_notes_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                sendy_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NoteCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItemOut"];
+                };
+            };
+            /** @description Request too large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };
