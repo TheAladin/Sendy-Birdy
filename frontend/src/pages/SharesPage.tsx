@@ -1,4 +1,5 @@
 import {
+  Activity,
   CalendarClock,
   Copy,
   Ellipsis,
@@ -11,7 +12,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useState } from "react";
-import { Link, useSearchParams } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 
 import { type ShareSummary, useDeleteShare, useRevokeShare, useShares } from "../api/shares";
 import { PageHeader } from "../components/PageHeader";
@@ -53,6 +54,7 @@ type Pending = { action: "edit" | "extend" | "revoke" | "delete"; share: ShareSu
 
 function ShareRow({ share, onAction }: { share: ShareSummary; onAction: (p: Pending) => void }) {
   const toast = useToast();
+  const navigate = useNavigate();
   const state = shareState(share);
   const badge = BADGES[state];
   const revoked = state === "revoked";
@@ -144,6 +146,11 @@ function ShareRow({ share, onAction }: { share: ShareSummary; onAction: (p: Pend
           label={`Actions for ${share.title}`}
           icon={<Ellipsis className="size-4" />}
           items={[
+            {
+              label: "View activity",
+              icon: <Activity />,
+              onSelect: () => void navigate(`/activity?share=${share.id}`),
+            },
             // A revoked link can only be deleted: it never works again.
             ...(revoked
               ? []

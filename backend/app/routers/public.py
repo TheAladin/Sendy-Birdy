@@ -90,7 +90,12 @@ async def _open_content(
     ):
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
-            {"reason": "locked", "message": LOCKED_MESSAGE, "shared_by": await _shared_by(session)},
+            {
+                "reason": "locked",
+                "message": LOCKED_MESSAGE,
+                "shared_by": await _shared_by(session),
+                "retention_days": settings.log_retention_days,
+            },
         )
     return share
 
@@ -126,6 +131,7 @@ async def view_share(
         title=share.title,
         message=share.message,
         shared_by=await _shared_by(session),
+        retention_days=settings.log_retention_days,
         expires_at=share.expires_at,
         allow_downloads=share.allow_downloads,
         items=[PublicItem.model_validate(entry.item) for entry in share.entries],

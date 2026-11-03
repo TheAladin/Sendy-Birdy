@@ -111,7 +111,16 @@ async def test_a_link_shows_the_share_without_signing_in(
 async def test_nothing_internal_is_revealed(visitor: AsyncClient, shared: Shared) -> None:
     body = (await visitor.get(f"/api/public/shares/{shared.token}")).json()
 
-    assert set(body) == {"title", "message", "shared_by", "expires_at", "allow_downloads", "items"}
+    assert set(body) == {
+        "title",
+        "message",
+        "shared_by",
+        "retention_days",
+        "expires_at",
+        "allow_downloads",
+        "items",
+    }
+    assert body["retention_days"] == 90
     for item in body["items"]:
         # No hashes, original file names, dates, share counts or ids of other things.
         assert set(item) == PUBLIC_ITEM_FIELDS

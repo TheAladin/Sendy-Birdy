@@ -31,6 +31,8 @@ class PublicShare(BaseModel):
     message: str | None
     # The admin's display name, for "Shared by …".
     shared_by: str
+    # How long visits stay in the access log, for the page's privacy notice.
+    retention_days: int
     expires_at: datetime | None
     allow_downloads: bool
     items: list[PublicItem]
@@ -52,6 +54,8 @@ class ShareLockedDetail(BaseModel):
     message: str
     # All a locked link reveals, so the client knows whom to ask for the password.
     shared_by: str
+    # Attempts are logged too, so the privacy notice applies here as well.
+    retention_days: int
 
 
 class ShareLocked(BaseModel):

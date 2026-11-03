@@ -620,6 +620,8 @@ export interface components {
             items: components["schemas"]["PublicItem"][];
             /** Message */
             message: string | null;
+            /** Retention Days */
+            retention_days: number;
             /** Shared By */
             shared_by: string;
             /** Title */
@@ -688,6 +690,8 @@ export interface components {
              * @constant
              */
             reason: "locked";
+            /** Retention Days */
+            retention_days: number;
             /** Shared By */
             shared_by: string;
         };

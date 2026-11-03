@@ -107,6 +107,7 @@ async def test_a_locked_link_reveals_only_that_it_is_locked_and_by_whom(
             "reason": "locked",
             "message": "This link is protected by a password.",
             "shared_by": me["display_name"],
+            "retention_days": 90,
         }
     }
     assert "Northwind" not in response.text

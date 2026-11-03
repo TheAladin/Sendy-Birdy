@@ -29,6 +29,7 @@ const SHARE: PublicShare = {
   title: "Homepage redesign: round 2",
   message: "Hi! Here are the **updated screens**.",
   shared_by: "Alex Martin",
+  retention_days: 90,
   expires_at: new Date(Date.now() + 6 * 24 * 3600 * 1000).toISOString(),
   allow_downloads: true,
   items: [
@@ -313,4 +314,35 @@ test("a note's title isn't repeated when the note starts with it", async () => {
 
   expect(await screen.findAllByRole("heading", { name: "Changelog" })).toHaveLength(1);
   expect(screen.getByRole("heading", { name: "Ideas" })).toBeInTheDocument();
+});
+
+test("visitors are told what's logged, and for how long", async () => {
+  setup(() => json({ ...SHARE, retention_days: 30 }));
+  renderRoute(`/s/${TOKEN}`);
+
+  expect(
+    await screen.findByText(
+      "Visits to this page are logged (IP address, browser, time) for security and deleted after 30 days.",
+    ),
+  ).toBeInTheDocument();
+});
+
+test("the notice also shows on a locked link, but not on a gone one", async () => {
+  mockApi({
+    [`GET ${PATH}`]: () =>
+      json(
+        { detail: { reason: "locked", message: "", shared_by: "Alex", retention_days: 90 } },
+        403,
+      ),
+  });
+  renderRoute(`/s/${TOKEN}`);
+  expect(await screen.findByText(/deleted after 90 days/)).toBeInTheDocument();
+});
+
+test("an expired link has nothing logged, so no notice", async () => {
+  setup(() => json({ detail: { reason: "expired", message: "" } }, 410));
+  renderRoute(`/s/${TOKEN}`);
+
+  await screen.findByRole("heading", { name: "This link has expired" });
+  expect(screen.queryByText(/Visits to this page are logged/)).not.toBeInTheDocument();
 });

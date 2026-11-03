@@ -20,7 +20,17 @@ import { Skeleton } from "../../components/ui/Display";
 import { formatBytes, formatDateTime, formatDuration, formatRelative } from "../../lib/format";
 import { useDocumentTitle } from "../../lib/useDocumentTitle";
 
-function Layout({ children }: { children: ReactNode }) {
+/** Visitors are told what's logged about them, and for how long. */
+function PrivacyNotice({ days }: { days: number }) {
+  return (
+    <p>
+      Visits to this page are logged (IP address, browser, time) for security and deleted after{" "}
+      {days} days.
+    </p>
+  );
+}
+
+function Layout({ children, retentionDays }: { children: ReactNode; retentionDays?: number }) {
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="border-b border-zinc-200 dark:border-zinc-800">
@@ -31,8 +41,10 @@ function Layout({ children }: { children: ReactNode }) {
       <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6 sm:py-12">
         {children}
       </main>
-      <footer className="mx-auto w-full max-w-5xl px-4 pb-8 text-xs text-zinc-600 sm:px-6 dark:text-zinc-400">
-        A private link, shared with Sendy Birdy. Please don't forward it.
+      <footer className="mx-auto grid w-full max-w-5xl gap-1 px-4 pb-8 text-xs text-zinc-600 sm:px-6 dark:text-zinc-400">
+        {/* Only where something is actually logged: an opened or a locked link. */}
+        {retentionDays !== undefined && <PrivacyNotice days={retentionDays} />}
+        <p>A private link, shared with Sendy Birdy. Please don't forward it.</p>
       </footer>
     </div>
   );
@@ -287,8 +299,13 @@ export default function SharePage() {
   const { token = "" } = useParams();
   const share = usePublicShare(token);
 
+  const locked =
+    share.error instanceof ShareUnavailable && share.error.state.reason === "locked"
+      ? share.error.state.retentionDays
+      : undefined;
+
   return (
-    <Layout>
+    <Layout retentionDays={share.data?.retention_days ?? locked}>
       {share.data ? (
         <ShareContent share={share.data} token={token} />
       ) : share.error ? (

@@ -11,7 +11,7 @@ export type PublicItem = components["schemas"]["PublicItem"];
 export type Unavailable =
   | { reason: "not-found" }
   | { reason: "expired" | "revoked" }
-  | { reason: "locked"; sharedBy: string };
+  | { reason: "locked"; sharedBy: string; retentionDays: number };
 
 export class ShareUnavailable extends Error {
   readonly state: Unavailable;
@@ -25,13 +25,17 @@ export class ShareUnavailable extends Error {
 
 function unavailable(status: number, body: unknown): ShareUnavailable | null {
   const detail = (body as { detail?: unknown } | undefined)?.detail as
-    { reason?: string; shared_by?: string } | undefined;
+    { reason?: string; shared_by?: string; retention_days?: number } | undefined;
   if (status === 404) return new ShareUnavailable({ reason: "not-found" });
   if (status === 410 && (detail?.reason === "expired" || detail?.reason === "revoked")) {
     return new ShareUnavailable({ reason: detail.reason });
   }
   if (status === 403 && detail?.reason === "locked") {
-    return new ShareUnavailable({ reason: "locked", sharedBy: detail.shared_by ?? "" });
+    return new ShareUnavailable({
+      reason: "locked",
+      sharedBy: detail.shared_by ?? "",
+      retentionDays: detail.retention_days ?? 90,
+    });
   }
   return null;
 }
@@ -47,10 +51,12 @@ export const publicThumbnailUrl = (token: string, id: string) =>
 export function usePublicShare(token: string) {
   return useQuery({
     queryKey: ["public-share", token],
-    queryFn: async ({ signal }) => {
+    // No abort signal on purpose: the server counts a view as soon as the request arrives, so
+    // a cancelled request (e.g. React's dev-mode double mount) followed by a new one would be
+    // counted twice. Without it, a remount simply reuses the request already in flight.
+    queryFn: async () => {
       const { data, error, response } = await api.GET("/api/public/shares/{token}", {
         params: { path: { token } },
-        signal,
       });
       if (data) return data;
       throw unavailable(response.status, error) ?? new Error(`HTTP ${response.status}`);

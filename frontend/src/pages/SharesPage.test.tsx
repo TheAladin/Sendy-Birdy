@@ -138,7 +138,11 @@ test("deleting asks first, then deletes; a revoked link can only be deleted", as
   renderRoute("/shares");
 
   await user.click(await screen.findByRole("button", { name: "Actions for Wrong client" }));
-  expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Delete"]);
+  // Its history is still worth seeing, but there's nothing left to edit or revoke.
+  expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual([
+    "View activity",
+    "Delete",
+  ]);
   await user.click(screen.getByRole("menuitem", { name: "Delete" }));
   const dialog = screen.getByRole("dialog", { name: 'Delete "Wrong client"?' });
   expect(dialog).toHaveTextContent("The items stay in your library.");
