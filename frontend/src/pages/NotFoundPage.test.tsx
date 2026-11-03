@@ -3,9 +3,9 @@ import { expect, test } from "vitest";
 
 import { renderRoute } from "../test/render";
 
-test("unknown addresses show a not-found page with a way back", () => {
+test("unknown addresses show a not-found page with a way back", async () => {
   renderRoute("/no/such/page");
 
-  expect(screen.getByRole("heading", { name: "Page not found" })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "Page not found" })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Back to the start" })).toHaveAttribute("href", "/");
 });

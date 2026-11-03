@@ -5,6 +5,18 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sendy Birdy</title>
+    <!--
+      Chat apps build link previews from this file without running any script, so these tags
+      are the same for every page: a share link never previews its title or images.
+    -->
+    <meta name="description" content="A private link shared with Sendy Birdy." />
+    <meta property="og:title" content="Sendy Birdy" />
+    <meta property="og:description" content="A private link shared with Sendy Birdy." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary" />
+    <!-- Share URLs carry their token: never send them to other sites, never index them. -->
+    <meta name="referrer" content="no-referrer" />
+    <meta name="robots" content="noindex, nofollow" />
     <script src="/theme-init.js"></script>
   </head>
   <body>

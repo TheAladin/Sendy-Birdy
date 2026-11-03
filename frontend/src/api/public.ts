@@ -1,0 +1,63 @@
+import { useQuery } from "@tanstack/react-query";
+
+import { api } from "./client";
+import type { components } from "./schema";
+
+export type PublicShare = components["schemas"]["PublicShare"];
+export type PublicItem = components["schemas"]["PublicItem"];
+
+/** Why a share can't be shown, as the page needs to explain it. */
+export type Unavailable =
+  | { reason: "not-found" }
+  | { reason: "expired" | "revoked" }
+  | { reason: "locked"; sharedBy: string };
+
+export class ShareUnavailable extends Error {
+  readonly state: Unavailable;
+
+  constructor(state: Unavailable) {
+    super(state.reason);
+    this.name = "ShareUnavailable";
+    this.state = state;
+  }
+}
+
+function unavailable(status: number, body: unknown): ShareUnavailable | null {
+  const detail = (body as { detail?: unknown } | undefined)?.detail as
+    { reason?: string; shared_by?: string } | undefined;
+  if (status === 404) return new ShareUnavailable({ reason: "not-found" });
+  if (status === 410 && (detail?.reason === "expired" || detail?.reason === "revoked")) {
+    return new ShareUnavailable({ reason: detail.reason });
+  }
+  if (status === 403 && detail?.reason === "locked") {
+    return new ShareUnavailable({ reason: "locked", sharedBy: detail.shared_by ?? "" });
+  }
+  return null;
+}
+
+const base = (token: string) => `/api/public/shares/${encodeURIComponent(token)}`;
+
+export const publicFileUrl = (token: string, id: string) => `${base(token)}/items/${id}/file`;
+export const publicDownloadUrl = (token: string, id: string) =>
+  `${publicFileUrl(token, id)}?download=1`;
+export const publicThumbnailUrl = (token: string, id: string) =>
+  `${base(token)}/items/${id}/thumbnail`;
+
+export function usePublicShare(token: string) {
+  return useQuery({
+    queryKey: ["public-share", token],
+    queryFn: async ({ signal }) => {
+      const { data, error, response } = await api.GET("/api/public/shares/{token}", {
+        params: { path: { token } },
+        signal,
+      });
+      if (data) return data;
+      throw unavailable(response.status, error) ?? new Error(`HTTP ${response.status}`);
+    },
+    // Each load counts as a view, so never reload behind the client's back.
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    // Retrying only helps with network trouble, not with a link that's gone.
+    retry: (count, error) => !(error instanceof ShareUnavailable) && count < 2,
+  });
+}

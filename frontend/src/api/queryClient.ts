@@ -1,6 +1,6 @@
 import { QueryCache, QueryClient } from "@tanstack/react-query";
 
-import { meQueryKey } from "./auth";
+import { meQueryKey } from "./keys";
 import { ApiError, isClientError } from "./errors";
 
 export function createQueryClient() {

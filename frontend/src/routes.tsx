@@ -1,34 +1,34 @@
 import type { RouteObject } from "react-router";
 
-import { AppShell } from "./components/AppShell";
-import { RequireAuth } from "./components/RequireAuth";
-import ActivityPage from "./pages/ActivityPage";
-import LibraryPage from "./pages/LibraryPage";
-import LoginPage from "./pages/LoginPage";
-import NotFoundPage from "./pages/NotFoundPage";
-import SharesPage from "./pages/SharesPage";
+// Every page loads on demand, so the entry bundle holds only the router and providers. That
+// keeps the admin app out of what clients download for a share link, and the reverse.
+const page = (load: () => Promise<{ default: React.ComponentType }>) => async () => ({
+  Component: (await load()).default,
+});
 
 // The UI catalogue only exists in development; production builds leave it out entirely.
 const devRoutes: RouteObject[] = import.meta.env.DEV
-  ? [{ path: "/ui", lazy: async () => ({ Component: (await import("./pages/UiPage")).default }) }]
+  ? [{ path: "/ui", lazy: page(() => import("./pages/UiPage")) }]
   : [];
 
 export const routes: RouteObject[] = [
-  { path: "/login", element: <LoginPage /> },
+  // What clients see: its own minimal layout, no sign-in.
+  { path: "/s/:token", lazy: page(() => import("./pages/public/SharePage")) },
+  { path: "/login", lazy: page(() => import("./pages/LoginPage")) },
   // Everything inside requires a signed-in user and is shown inside the app shell.
   {
-    element: <RequireAuth />,
+    lazy: async () => ({ Component: (await import("./components/RequireAuth")).RequireAuth }),
     children: [
       {
-        element: <AppShell />,
+        lazy: async () => ({ Component: (await import("./components/AppShell")).AppShell }),
         children: [
-          { path: "/", element: <LibraryPage /> },
-          { path: "/shares", element: <SharesPage /> },
-          { path: "/activity", element: <ActivityPage /> },
+          { path: "/", lazy: page(() => import("./pages/LibraryPage")) },
+          { path: "/shares", lazy: page(() => import("./pages/SharesPage")) },
+          { path: "/activity", lazy: page(() => import("./pages/ActivityPage")) },
         ],
       },
     ],
   },
   ...devRoutes,
-  { path: "*", element: <NotFoundPage /> },
+  { path: "*", lazy: page(() => import("./pages/NotFoundPage")) },
 ];

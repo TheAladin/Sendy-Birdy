@@ -2,12 +2,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "./client";
 import { apiError } from "./errors";
+import { meQueryKey } from "./keys";
 import type { components } from "./schema";
 
 export type User = components["schemas"]["UserOut"];
 export type Credentials = components["schemas"]["LoginRequest"];
 
-export const meQueryKey = ["me"] as const;
+export { meQueryKey };
 
 /** The signed-in user, or null when signed out. */
 export function useMe() {
