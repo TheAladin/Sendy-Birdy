@@ -3,6 +3,8 @@ import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router";
 
 import { useLogout, useMe } from "../api/auth";
+import { UploadPanel } from "../features/uploads/UploadPanel";
+import { UploadProvider } from "../features/uploads/UploadProvider";
 import { cn } from "../lib/cn";
 import { Logo } from "./brand/Logo";
 import { ThemeSwitcher } from "./ThemeSwitcher";
@@ -87,36 +89,43 @@ export function AppShell() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <div className="min-h-dvh lg:grid lg:grid-cols-[16rem_1fr]">
-      <a
-        href="#main"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-control focus:bg-white focus:px-3 focus:py-2 focus:text-sm focus:shadow-card dark:focus:bg-zinc-900"
-      >
-        Skip to content
-      </a>
+    <UploadProvider>
+      <div className="min-h-dvh lg:grid lg:grid-cols-[16rem_1fr]">
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-control focus:bg-white focus:px-3 focus:py-2 focus:text-sm focus:shadow-card dark:focus:bg-zinc-900"
+        >
+          Skip to content
+        </a>
 
-      <aside className="hidden border-r border-zinc-200 bg-white lg:block dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="sticky top-0 h-dvh">
-          <SidebarContent />
-        </div>
-      </aside>
+        <aside className="hidden border-r border-zinc-200 bg-white lg:block dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="sticky top-0 h-dvh">
+            <SidebarContent />
+          </div>
+        </aside>
 
-      <header className="flex items-center gap-2 border-b border-zinc-200 bg-white px-4 py-2 lg:hidden dark:border-zinc-800 dark:bg-zinc-900">
-        <IconButton
-          label="Open navigation"
-          icon={<MenuIcon className="size-5" />}
-          onClick={() => setMenuOpen(true)}
-        />
-        <Logo />
-      </header>
-      <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} label="Navigation">
-        {/* Following a link in the slide-over closes it. */}
-        <SidebarContent onNavigate={() => setMenuOpen(false)} />
-      </Sheet>
+        <header className="flex items-center gap-2 border-b border-zinc-200 bg-white px-4 py-2 lg:hidden dark:border-zinc-800 dark:bg-zinc-900">
+          <IconButton
+            label="Open navigation"
+            icon={<MenuIcon className="size-5" />}
+            onClick={() => setMenuOpen(true)}
+          />
+          <Logo />
+        </header>
+        <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} label="Navigation">
+          {/* Following a link in the slide-over closes it. */}
+          <SidebarContent onNavigate={() => setMenuOpen(false)} />
+        </Sheet>
 
-      <main id="main" tabIndex={-1} className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-8 lg:py-10">
-        <Outlet />
-      </main>
-    </div>
+        <main
+          id="main"
+          tabIndex={-1}
+          className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-8 lg:py-10"
+        >
+          <Outlet />
+        </main>
+      </div>
+      <UploadPanel />
+    </UploadProvider>
   );
 }

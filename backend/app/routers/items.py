@@ -22,10 +22,17 @@ from app.schemas.items import (
     ItemSummary,
     ItemUpdate,
     NoteCreate,
+    UploadLimits,
 )
 from app.services.images import InvalidImage
 from app.services.library import add_media
-from app.services.storage import EmptyUpload, Storage, UnsupportedFileType, UploadTooLarge
+from app.services.storage import (
+    ALLOWED_TYPES,
+    EmptyUpload,
+    Storage,
+    UnsupportedFileType,
+    UploadTooLarge,
+)
 
 router = APIRouter(prefix="/items", tags=["items"])
 logger = logging.getLogger(__name__)
@@ -158,6 +165,14 @@ async def _get_item(session: SessionDep, item_id: uuid.UUID) -> Item:
     if item is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Item not found.")
     return item
+
+
+# Declared before "/{item_id}", which would otherwise try to read "upload-limits" as an id.
+@router.get("/upload-limits")
+async def get_upload_limits(settings: SettingsDep, _user: CurrentUser) -> UploadLimits:
+    return UploadLimits(
+        max_bytes=settings.max_upload_mb * 1024 * 1024, accepted_types=sorted(ALLOWED_TYPES)
+    )
 
 
 @router.get("/{item_id}")

@@ -18,3 +18,9 @@ export function mockApi(handlers: Record<string, Handler>) {
 
 export const json = (body: unknown, status = 200, headers?: HeadersInit) =>
   Response.json(body, { status, headers });
+
+/** What the upload-limits endpoint returns in tests. */
+export const LIMITS = {
+  max_bytes: 5 * 1024 * 1024,
+  accepted_types: ["image/png", "image/jpeg", "video/mp4"],
+};

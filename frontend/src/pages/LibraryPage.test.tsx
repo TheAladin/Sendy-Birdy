@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, expect, test, vi } from "vitest";
 
 import type { ItemSummary } from "../api/items";
-import { json, mockApi } from "../test/api";
+import { json, LIMITS, mockApi } from "../test/api";
 import { renderRoute } from "../test/render";
 
 const USER = { id: "u1", email: "me@example.com", display_name: "Alex" };
@@ -53,6 +53,7 @@ function libraryApi(handler: (url: URL) => Response) {
   return mockApi({
     "GET /api/auth/me": () => json(USER),
     "GET /api/items": (request) => handler(new URL(request.url)),
+    "GET /api/items/upload-limits": () => json(LIMITS),
   });
 }
 

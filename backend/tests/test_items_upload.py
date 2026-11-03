@@ -166,3 +166,22 @@ async def test_uploading_requires_signing_in(
     assert response.status_code == 401
     assert stored_files(settings) == []
     assert await item_count(db_session) == 0
+
+
+async def test_upload_limits_tell_the_browser_what_is_accepted(
+    signed_in: AsyncClient, small_limit: Settings
+) -> None:
+    response = await signed_in.get("/api/items/upload-limits")
+
+    assert response.json() == {
+        "max_bytes": 1024 * 1024,
+        "accepted_types": [
+            "image/gif",
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+            "video/mp4",
+            "video/quicktime",
+            "video/webm",
+        ],
+    }

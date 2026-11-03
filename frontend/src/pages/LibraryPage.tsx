@@ -1,5 +1,5 @@
-import { ImagePlus, SearchX } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { ImagePlus, SearchX, Upload } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 
 import { type ItemKind, useItems } from "../api/items";
@@ -8,6 +8,8 @@ import { PageHeader } from "../components/PageHeader";
 import { Button } from "../components/ui/Button";
 import { EmptyState, Spinner } from "../components/ui/Display";
 import { Input } from "../components/ui/Input";
+import { DropAndPaste } from "../features/uploads/DropAndPaste";
+import { nameForUpload, useUploadLimits, useUploadQueue } from "../features/uploads/context";
 import { cn } from "../lib/cn";
 
 const FILTERS: { kind?: ItemKind; label: string }[] = [
@@ -30,6 +32,19 @@ export default function LibraryPage() {
   const searchTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const items = useItems({ kind, q: q.trim() });
   const sentinel = useRef<HTMLDivElement>(null);
+  const filePicker = useRef<HTMLInputElement>(null);
+  const queue = useUploadQueue();
+  const limits = useUploadLimits();
+  const addFiles = useCallback(
+    (files: File[]) => queue.add(files, (file) => nameForUpload(file)),
+    [queue],
+  );
+  const uploadButton = (
+    <Button onClick={() => filePicker.current?.click()}>
+      <Upload className="size-4" aria-hidden="true" />
+      Upload
+    </Button>
+  );
 
   const results = items.data?.pages.flatMap((page) => page.items) ?? [];
   const filtered = Boolean(kind ?? q.trim());
@@ -78,7 +93,24 @@ export default function LibraryPage() {
 
   return (
     <div className="grid gap-6">
-      <PageHeader title="Library" description="Your screenshots, videos and notes." />
+      <PageHeader
+        title="Library"
+        description="Your screenshots, videos and notes."
+        actions={uploadButton}
+      />
+      <input
+        ref={filePicker}
+        type="file"
+        multiple
+        hidden
+        accept={limits.data?.acceptedTypes.join(",") ?? "image/*,video/*"}
+        onChange={(event) => {
+          addFiles(Array.from(event.target.files ?? []));
+          // Reset, so choosing the same file again still triggers a change.
+          event.target.value = "";
+        }}
+      />
+      <DropAndPaste onFiles={addFiles} />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <nav aria-label="Filter by type">
@@ -162,7 +194,8 @@ export default function LibraryPage() {
           <EmptyState
             icon={<ImagePlus />}
             title="Your library is empty"
-            description="Screenshots, demo videos and notes you add will appear here, ready to share."
+            description="Upload screenshots or demo videos, drop them anywhere on this page, or paste a screenshot with Ctrl+V."
+            action={uploadButton}
           />
         )
       ) : (

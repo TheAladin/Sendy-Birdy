@@ -115,3 +115,10 @@ class BulkDelete(BaseModel):
 
 class BulkDeleteResult(BaseModel):
     deleted: int
+
+
+class UploadLimits(BaseModel):
+    """What the server accepts, so the browser can check files before uploading them."""
+
+    max_bytes: int
+    accepted_types: list[str]

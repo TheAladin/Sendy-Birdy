@@ -54,7 +54,7 @@ export function Toaster({ children }: { children: ReactNode }) {
       <section
         aria-label="Notifications"
         aria-live="polite"
-        className="pointer-events-none fixed inset-x-4 bottom-4 z-50 flex flex-col items-end gap-2 sm:left-auto"
+        className="pointer-events-none fixed inset-x-4 top-4 z-50 flex flex-col items-end gap-2 sm:left-auto"
       >
         {toasts.map((toast) => (
           <div

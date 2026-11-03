@@ -2,7 +2,7 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
-import { json, mockApi } from "../test/api";
+import { json, LIMITS, mockApi } from "../test/api";
 import { renderRoute } from "../test/render";
 
 const USER = {
@@ -15,6 +15,7 @@ beforeEach(() => {
   mockApi({
     "GET /api/auth/me": () => json(USER),
     "GET /api/items": () => json({ items: [], next_cursor: null }),
+    "GET /api/items/upload-limits": () => json(LIMITS),
   });
 });
 
