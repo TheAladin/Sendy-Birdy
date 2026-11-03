@@ -6,8 +6,9 @@ BACKEND := backend
 FRONTEND := frontend
 ADMIN_PORT ?= 8000
 PUBLIC_PORT ?= 8001
+BACKUP_DIR ?= backups
 
-.PHONY: help install db-setup db-migrate create-admin seed-demo gen-api build start start-admin start-public dev dev-api dev-web check fmt
+.PHONY: help install db-setup db-migrate create-admin seed-demo backup gen-api build start start-admin start-public dev dev-api dev-web check fmt
 
 help: ## List available commands
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "} {printf "  make %-12s %s\n", $$1, $$2}'
@@ -34,6 +35,9 @@ create-admin: ## Create your admin account (prompts for email, name and password
 
 seed-demo: ## Fill an empty library with demo screenshots, notes and a video
 	cd $(BACKEND) && uv run python -m app.cli seed-demo
+
+backup: ## Back up the database and media into BACKUP_DIR (default: ./backups)
+	cd $(BACKEND) && uv run python -m app.cli backup "$(abspath $(BACKUP_DIR))"
 
 dev: ## Run the API and the frontend together (Ctrl+C stops both)
 	@$(MAKE) --no-print-directory -j2 dev-api dev-web

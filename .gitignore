@@ -3,8 +3,9 @@
 .env.*
 !.env.example
 
-# Runtime data (uploaded media)
+# Runtime data (uploaded media) and backups of it
 data/
+backups/
 
 # Python
 __pycache__/

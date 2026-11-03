@@ -49,6 +49,18 @@ jobs:
         run: uv run ruff format --check
       - name: Install ffmpeg (for video poster tests)
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+      # pg_dump refuses a server newer than itself, so the client must be 18 like the service.
+      - name: Install PostgreSQL 18 client tools (for backup tests)
+        run: |
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y --no-install-recommends postgresql-client-18
+          echo "/usr/lib/postgresql/18/bin" >> "$GITHUB_PATH"
+      - name: Create the backup test databases
+        env:
+          PGPASSWORD: sendy
+        run: |
+          createdb -h 127.0.0.1 -U sendy sendy_backup_test
+          createdb -h 127.0.0.1 -U sendy sendy_restore_test
       - name: Apply migrations
         run: uv run alembic upgrade head
       - name: Check models match migrations

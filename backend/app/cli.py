@@ -5,6 +5,7 @@ import asyncio
 import getpass
 import sys
 from collections.abc import Awaitable, Callable
+from pathlib import Path
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,6 +20,7 @@ from app.services.admin import (
     find_admin,
     update_admin,
 )
+from app.services.backup import BackupError, create_backup, restore_backup
 from app.services.demo import LibraryNotEmpty, seed_demo
 from app.services.storage import Storage
 
@@ -112,6 +114,62 @@ def run_seed_demo(args: argparse.Namespace) -> str:
     return asyncio.run(with_session(work))
 
 
+def count(number: int, noun: str) -> str:
+    return f"{number} {noun}" if number == 1 else f"{number} {noun}s"
+
+
+def contents(items: int, shares: int, files: int) -> str:
+    return f"{count(items, 'item')}, {count(shares, 'share')} and {count(files, 'file')}"
+
+
+def run_backup(args: argparse.Namespace) -> str:
+    settings = get_settings()
+
+    async def work(session: AsyncSession) -> str:
+        summary = await create_backup(
+            session,
+            settings.database_url.get_secret_value(),
+            Storage(settings.data_dir),
+            args.folder.resolve(),
+        )
+        lines = [
+            f"Backed up {contents(summary.items, summary.shares, summary.files)} to {summary.path}",
+        ]
+        if summary.missing:
+            lines.append(
+                f"Warning: {count(len(summary.missing), 'file')} already missing from DATA_DIR "
+                "(deleted while the backup ran?): " + ", ".join(summary.missing)
+            )
+        return "\n".join(lines)
+
+    return asyncio.run(with_session(work))
+
+
+def run_restore(args: argparse.Namespace) -> str:
+    settings = get_settings()
+
+    async def work(session: AsyncSession) -> str:
+        summary = await restore_backup(
+            session,
+            settings.database_url.get_secret_value(),
+            Storage(settings.data_dir),
+            args.folder.resolve(),
+        )
+        lines = [f"Restored {contents(summary.items, summary.shares, summary.files)}."]
+        if summary.needs_migration:
+            lines.append("The backup is from an older version: run `make db-migrate` next.")
+        if summary.problems:
+            lines.append(f"{count(len(summary.problems), 'problem')} found checking the files:")
+            lines += [f"  - {problem}" for problem in summary.problems]
+            # Non-zero exit, so a script running the restore notices.
+            raise BackupError("\n".join(lines))
+        else:
+            lines.append("Every file was checked against its SHA-256: all good.")
+        return "\n".join(lines)
+
+    return asyncio.run(with_session(work))
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -m app.cli", description="Sendy Birdy admin tools"
@@ -133,6 +191,16 @@ def build_parser() -> argparse.ArgumentParser:
     demo = commands.add_parser("seed-demo", help="fill an empty library with demo content")
     demo.add_argument("--force", action="store_true", help="add it even if the library has items")
     demo.set_defaults(run=run_seed_demo)
+
+    backup = commands.add_parser("backup", help="save the database and media into a new folder")
+    backup.add_argument("folder", type=Path, help="where to create the backup folder")
+    backup.set_defaults(run=run_backup)
+
+    restore = commands.add_parser(
+        "restore", help="restore a backup into an empty database and DATA_DIR"
+    )
+    restore.add_argument("folder", type=Path, help="the sendy-backup-… folder to restore")
+    restore.set_defaults(run=run_restore)
     return parser
 
 
@@ -140,7 +208,7 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
         print(args.run(args))
-    except AdminError as error:
+    except (AdminError, BackupError) as error:
         print(error, file=sys.stderr)
         return 1
     except (KeyboardInterrupt, EOFError):
