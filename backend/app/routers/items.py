@@ -26,6 +26,7 @@ from app.schemas.items import (
 )
 from app.services.images import InvalidImage
 from app.services.library import add_media
+from app.services.sharing import share_counts
 from app.services.storage import (
     ALLOWED_TYPES,
     EmptyUpload,
@@ -154,8 +155,14 @@ async def list_items(
     rows = list((await session.scalars(query)).all())
     has_more = len(rows) > limit
     page = rows[:limit]
+    counts = await share_counts(session, (item.id for item in page))
     return ItemPage(
-        items=[ItemSummary.model_validate(item) for item in page],
+        items=[
+            ItemSummary.model_validate(item).model_copy(
+                update={"share_count": counts.get(item.id, 0)}
+            )
+            for item in page
+        ],
         next_cursor=_encode_cursor(page[-1]) if has_more else None,
     )
 
@@ -175,9 +182,14 @@ async def get_upload_limits(settings: SettingsDep, _user: CurrentUser) -> Upload
     )
 
 
+async def _item_out(session: SessionDep, item: Item) -> ItemOut:
+    counts = await share_counts(session, [item.id])
+    return ItemOut.model_validate(item).model_copy(update={"share_count": counts.get(item.id, 0)})
+
+
 @router.get("/{item_id}")
 async def get_item(item_id: uuid.UUID, session: SessionDep, _user: CurrentUser) -> ItemOut:
-    return ItemOut.model_validate(await _get_item(session, item_id))
+    return await _item_out(session, await _get_item(session, item_id))
 
 
 @router.patch("/{item_id}")
@@ -193,7 +205,7 @@ async def update_item(
         item.body = changes.body
     await session.commit()
     await session.refresh(item)
-    return ItemOut.model_validate(item)
+    return await _item_out(session, item)
 
 
 async def _delete_files(storage: Storage, item_ids: list[uuid.UUID]) -> None:

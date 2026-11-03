@@ -214,6 +214,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/shares": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Shares
+         * @description Every share, newest first. There's no paging: one person creates these by hand.
+         */
+        get: operations["list_shares_api_shares_get"];
+        put?: never;
+        /**
+         * Create Share
+         * @description Create a link to these items, in this order.
+         */
+        post: operations["create_share_api_shares_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/shares/{share_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Share */
+        get: operations["get_share_api_shares__share_id__get"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete Share
+         * @description Delete the link. The items stay in the library.
+         */
+        delete: operations["delete_share_api_shares__share_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Share
+         * @description Edit a share; item_ids replaces the items and their order.
+         */
+        patch: operations["update_share_api_shares__share_id__patch"];
+        trace?: never;
+    };
+    "/api/shares/{share_id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revoke Share
+         * @description Turn the link off for good. Revoking twice keeps the first date.
+         */
+        post: operations["revoke_share_api_shares__share_id__revoke_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -275,6 +344,11 @@ export interface components {
             mime_type: string | null;
             /** Original Filename */
             original_filename: string | null;
+            /**
+             * Share Count
+             * @default 0
+             */
+            share_count: number;
             /** Size Bytes */
             size_bytes: number | null;
             /** Title */
@@ -326,6 +400,11 @@ export interface components {
             mime_type: string | null;
             /** Original Filename */
             original_filename: string | null;
+            /**
+             * Share Count
+             * @default 0
+             */
+            share_count: number;
             /** Size Bytes */
             size_bytes: number | null;
             /** Title */
@@ -367,6 +446,129 @@ export interface components {
             body: string;
             /** Title */
             title: string;
+        };
+        /** ShareCreate */
+        ShareCreate: {
+            /**
+             * Allow Downloads
+             * @default true
+             */
+            allow_downloads: boolean;
+            /**
+             * Expires At
+             * @description null: never expires.
+             */
+            expires_at?: string | null;
+            /**
+             * Item Ids
+             * @description In the order the client sees them.
+             */
+            item_ids: string[];
+            /**
+             * Message
+             * @description Markdown, shown above the items.
+             */
+            message?: string | null;
+            /** Title */
+            title: string;
+        };
+        /** ShareOut */
+        ShareOut: {
+            /** Allow Downloads */
+            allow_downloads: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Expires At */
+            expires_at: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Item Count */
+            item_count: number;
+            /** Items */
+            items: components["schemas"]["ItemSummary"][];
+            /** Last Viewed At */
+            last_viewed_at: string | null;
+            /** Message */
+            message: string | null;
+            /** Revoked At */
+            revoked_at: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "expired" | "revoked";
+            /** Title */
+            title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Url */
+            url: string;
+            /** View Count */
+            view_count: number;
+        };
+        /** ShareSummary */
+        ShareSummary: {
+            /** Allow Downloads */
+            allow_downloads: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Expires At */
+            expires_at: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Item Count */
+            item_count: number;
+            /** Last Viewed At */
+            last_viewed_at: string | null;
+            /** Revoked At */
+            revoked_at: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "expired" | "revoked";
+            /** Title */
+            title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Url */
+            url: string;
+            /** View Count */
+            view_count: number;
+        };
+        /**
+         * ShareUpdate
+         * @description Change a share. Omitted fields stay as they are; "expires_at": null means never.
+         */
+        ShareUpdate: {
+            /** Allow Downloads */
+            allow_downloads?: boolean | null;
+            /** Expires At */
+            expires_at?: string | null;
+            /** Item Ids */
+            item_ids?: string[] | null;
+            /** Message */
+            message?: string | null;
+            /** Title */
+            title?: string | null;
         };
         /**
          * UploadLimits
@@ -882,6 +1084,213 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_shares_api_shares_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                sendy_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShareSummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_share_api_shares_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                sendy_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShareCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShareOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_share_api_shares__share_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                share_id: string;
+            };
+            cookie?: {
+                sendy_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShareOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_share_api_shares__share_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                share_id: string;
+            };
+            cookie?: {
+                sendy_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_share_api_shares__share_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                share_id: string;
+            };
+            cookie?: {
+                sendy_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShareUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShareOut"];
+                };
+            };
+            /** @description The share was revoked */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_share_api_shares__share_id__revoke_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                share_id: string;
+            };
+            cookie?: {
+                sendy_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShareOut"];
+                };
             };
             /** @description Validation Error */
             422: {

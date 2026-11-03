@@ -19,6 +19,7 @@ const NOTE = {
   height: null,
   duration_s: null,
   has_thumbnail: false,
+  share_count: 0,
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
 };

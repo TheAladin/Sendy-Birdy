@@ -164,4 +164,7 @@ async def test_there_is_no_way_to_register(client: AsyncClient) -> None:
         "/api/items/{item_id}",
         "/api/items/{item_id}/file",
         "/api/items/{item_id}/thumbnail",
+        "/api/shares",
+        "/api/shares/{share_id}",
+        "/api/shares/{share_id}/revoke",
     ]

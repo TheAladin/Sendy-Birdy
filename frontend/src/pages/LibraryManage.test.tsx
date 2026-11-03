@@ -20,6 +20,7 @@ function item(id: string, title: string): ItemSummary {
     height: 100,
     duration_s: null,
     has_thumbnail: true,
+    share_count: 0,
     created_at: "2026-11-01T10:30:00Z",
     updated_at: "2026-11-01T10:30:00Z",
     excerpt: null,

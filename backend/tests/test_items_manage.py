@@ -1,6 +1,4 @@
 import uuid
-from collections.abc import Awaitable, Callable
-from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -11,34 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import Settings
 from app.models import Item
 from tests import media
-
-START = datetime(2026, 1, 1, tzinfo=UTC)
-
-MakeItem = Callable[..., Awaitable[Item]]
-
-
-@pytest.fixture
-def make_item(db_session: AsyncSession) -> MakeItem:
-    """Insert an item directly, `minutes` after START (inside one test, PostgreSQL's now() is
-    the same for every row, so tests set creation times explicitly)."""
-
-    async def make(title: str, kind: str = "note", minutes: int = 0, body: str = "Text") -> Item:
-        fields: dict[str, object] = {"kind": kind, "title": title}
-        if kind == "note":
-            fields["body"] = body
-        else:
-            fields |= {
-                "original_filename": f"{title}.bin",
-                "mime_type": "image/png" if kind == "image" else "video/mp4",
-                "size_bytes": 1,
-                "sha256": "0" * 64,
-            }
-        item = Item(**fields, created_at=START + timedelta(minutes=minutes))
-        db_session.add(item)
-        await db_session.flush()
-        return item
-
-    return make
+from tests.conftest import MakeItem
 
 
 async def titles(client: AsyncClient, **params: object) -> list[str]:

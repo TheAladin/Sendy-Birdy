@@ -12,7 +12,7 @@ EXCERPT_LENGTH = 200
 ItemKind = Literal["image", "video", "note"]
 
 
-def _clean_title(title: str) -> str:
+def clean_title(title: str) -> str:
     title = title.strip()
     if not title:
         raise ValueError("A title can't be empty.")
@@ -48,6 +48,8 @@ class ItemSummary(BaseModel):
     updated_at: datetime
     # Notes only: the start of the text, for previews.
     excerpt: str | None = None
+    # How many share links include this item (whatever their status).
+    share_count: int = 0
 
     @model_validator(mode="before")
     @classmethod
@@ -78,7 +80,7 @@ class NoteCreate(BaseModel):
     @field_validator("title")
     @classmethod
     def _title_not_blank(cls, title: str) -> str:
-        return _clean_title(title)
+        return clean_title(title)
 
     @field_validator("body")
     @classmethod
@@ -95,7 +97,7 @@ class ItemUpdate(BaseModel):
     @field_validator("title")
     @classmethod
     def _title_not_blank(cls, title: str | None) -> str | None:
-        return None if title is None else _clean_title(title)
+        return None if title is None else clean_title(title)
 
     @field_validator("body")
     @classmethod

@@ -20,6 +20,7 @@ function item(overrides: Partial<ItemSummary> & Pick<ItemSummary, "title">): Ite
     height: 900,
     duration_s: null,
     has_thumbnail: true,
+    share_count: 0,
     created_at: new Date(Date.now() - 3 * HOUR).toISOString(),
     updated_at: new Date().toISOString(),
     excerpt: null,
