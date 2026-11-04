@@ -431,6 +431,7 @@ export default function LibraryPage() {
               <li key={item.id}>
                 <ItemCard
                   item={item}
+                  index={index}
                   onOpen={() => setViewing(index)}
                   selection={
                     selecting

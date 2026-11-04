@@ -11,7 +11,7 @@ const devRoutes: RouteObject[] = import.meta.env.DEV
   ? [{ path: "/ui", lazy: page(() => import("./pages/UiPage")) }]
   : [];
 
-export const routes: RouteObject[] = [
+const pages: RouteObject[] = [
   // What clients see: its own minimal layout, no sign-in.
   { path: "/s/:token", lazy: page(() => import("./pages/public/SharePage")) },
   { path: "/login", lazy: page(() => import("./pages/LoginPage")) },
@@ -32,3 +32,7 @@ export const routes: RouteObject[] = [
   ...devRoutes,
   { path: "*", lazy: page(() => import("./pages/NotFoundPage")) },
 ];
+
+// While the first page's code downloads there's nothing to show yet (theme-init.js has already
+// painted the right background). Saying so explicitly stops React Router's warning.
+export const routes: RouteObject[] = [{ hydrateFallbackElement: <></>, children: pages }];

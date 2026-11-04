@@ -92,3 +92,24 @@ async def test_only_reads_are_allowed(web: AsyncClient) -> None:
 async def test_without_a_build_only_the_api_is_served(client: AsyncClient) -> None:
     assert (await client.get("/")).status_code == 404
     assert (await client.get("/api/health")).status_code == 200
+
+
+async def test_the_build_is_compressed_for_browsers_that_accept_it(
+    web: AsyncClient, frontend_dir: Path
+) -> None:
+    (frontend_dir / "assets" / "big-Ef56Gh78.js").write_text("console.log('hello');\n" * 500)
+
+    compressed = await web.get("/assets/big-Ef56Gh78.js", headers={"Accept-Encoding": "gzip"})
+    assert compressed.headers["content-encoding"] == "gzip"
+    assert "accept-encoding" in compressed.headers["vary"].lower()
+    assert compressed.text.startswith("console.log")  # httpx decodes it
+    assert int(compressed.headers["content-length"]) < 1000
+    assert compressed.headers["cache-control"] == "public, max-age=31536000, immutable"
+
+    plain = await web.get("/assets/big-Ef56Gh78.js", headers={"Accept-Encoding": "identity"})
+    assert "content-encoding" not in plain.headers
+
+
+async def test_api_answers_are_not_compressed(web: AsyncClient) -> None:
+    response = await web.get("/api/openapi.json", headers={"Accept-Encoding": "gzip"})
+    assert "content-encoding" not in response.headers

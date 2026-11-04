@@ -5,6 +5,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from starlette.exceptions import HTTPException
+from starlette.middleware.gzip import GZipMiddleware
 from starlette.responses import Response
 from starlette.routing import Match, Mount
 from starlette.staticfiles import StaticFiles
@@ -79,4 +80,6 @@ def mount_frontend(app: FastAPI, directory: Path, pages: frozenset[str] | None =
         logger.info("No frontend build in %s; serving the API only.", directory)
         return
     spa = SinglePageApp(directory=directory, pages=pages)
-    app.router.routes.append(FrontendMount("/", app=spa))
+    # Scripts and styles shrink to about a third. Only the build is compressed: it's public code,
+    # so compression can't leak a secret (BREACH), and media keeps its Range support untouched.
+    app.router.routes.append(FrontendMount("/", app=GZipMiddleware(spa, minimum_size=1024)))

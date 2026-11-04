@@ -1,5 +1,5 @@
 import { Clock, Download, Expand, Link2Off, SearchX, WifiOff } from "lucide-react";
-import { type ReactNode, useCallback, useState } from "react";
+import { lazy, type ReactNode, Suspense, useCallback, useState } from "react";
 import { useParams } from "react-router";
 
 import {
@@ -12,13 +12,19 @@ import {
   usePublicShare,
 } from "../../api/public";
 import { Logo } from "../../components/brand/Logo";
-import { Markdown } from "../../components/Markdown";
 import { ImageViewer } from "../../components/public/ImageViewer";
 import { UnlockForm } from "../../components/public/UnlockForm";
 import { Button } from "../../components/ui/Button";
 import { Skeleton } from "../../components/ui/Display";
 import { formatBytes, formatDateTime, formatDuration, formatRelative } from "../../lib/format";
+import { loadingHints, thumbnailSize } from "../../lib/media";
 import { useDocumentTitle } from "../../lib/useDocumentTitle";
+
+// Markdown is the biggest chunk of the page. Imported normally, it would have to download before
+// the share could even be requested; started here, both download at once. The content waits
+// for both (see <Suspense> below), so nothing jumps when it arrives.
+const markdownModule = import("../../components/Markdown");
+const Markdown = lazy(() => markdownModule.then((module) => ({ default: module.Markdown })));
 
 /** Visitors are told what's logged about them, and for how long. */
 function PrivacyNotice({ days }: { days: number }) {
@@ -153,7 +159,7 @@ interface GalleryProps {
 function Gallery({ share, token, onOpenImage }: GalleryProps) {
   return (
     <ul className="grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
-      {share.items.map((item) => {
+      {share.items.map((item, index) => {
         if (item.kind === "note") {
           return (
             // Notes are read, not glanced at: they take the full width.
@@ -184,7 +190,9 @@ function Gallery({ share, token, onOpenImage }: GalleryProps) {
                     <img
                       src={thumb}
                       alt=""
-                      loading="lazy"
+                      {...thumbnailSize(item)}
+                      {...loadingHints(index)}
+                      decoding="async"
                       // Screenshots matter most at the top left (logo, navigation, headline).
                       className="size-full object-cover object-left-top motion-safe:transition-transform motion-safe:duration-200 motion-safe:group-hover:scale-[1.02]"
                     />
@@ -307,7 +315,9 @@ export default function SharePage() {
   return (
     <Layout retentionDays={share.data?.retention_days ?? locked}>
       {share.data ? (
-        <ShareContent share={share.data} token={token} />
+        <Suspense fallback={<Loading />}>
+          <ShareContent share={share.data} token={token} />
+        </Suspense>
       ) : share.error ? (
         <Unavailable token={token} error={share.error} onRetry={() => void share.refetch()} />
       ) : (

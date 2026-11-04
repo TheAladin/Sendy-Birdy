@@ -5,7 +5,8 @@ import { type ItemSummary, thumbnailUrl } from "../../api/items";
 import { useItem } from "../../api/notes";
 import { cn } from "../../lib/cn";
 import { formatBytes, formatDateTime, formatDuration } from "../../lib/format";
-import { Markdown } from "../Markdown";
+import { imageSize } from "../../lib/media";
+import { LazyMarkdown } from "../LazyMarkdown";
 import { IconButton } from "../ui/Button";
 import { Spinner } from "../ui/Display";
 
@@ -28,7 +29,7 @@ function NoteView({ id }: { id: string }) {
   }
   return (
     <div className="max-h-full w-full max-w-3xl overflow-y-auto rounded-card bg-white p-8 text-zinc-900 shadow-2xl dark:bg-zinc-900 dark:text-zinc-100">
-      <Markdown>{note.data.body ?? ""}</Markdown>
+      <LazyMarkdown>{note.data.body ?? ""}</LazyMarkdown>
     </div>
   );
 }
@@ -57,7 +58,9 @@ function Media({ item }: { item: ItemSummary }) {
       key={item.id}
       src={fileUrl(item.id)}
       alt={item.title}
-      className="max-h-full max-w-full rounded-lg object-contain shadow-2xl"
+      // The real size, so the box is right before the file arrives; CSS still scales it down.
+      {...imageSize(item)}
+      className="h-auto max-h-full w-auto max-w-full rounded-lg object-contain shadow-2xl"
     />
   );
 }

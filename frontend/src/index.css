@@ -29,6 +29,9 @@
   html {
     @apply bg-zinc-50 text-zinc-900 antialiased dark:bg-zinc-950 dark:text-zinc-100;
     color-scheme: light;
+    /* Room for the scrollbar from the start: otherwise it appears when content arrives and
+       shifts the whole centred page sideways (a large layout shift on the share page). */
+    scrollbar-gutter: stable;
   }
 
   html.dark {

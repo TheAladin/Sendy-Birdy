@@ -4,7 +4,7 @@ import { type FormEvent, type KeyboardEvent, useId, useState } from "react";
 import { MAX_NOTE_BYTES, useItem, useSaveNote } from "../../api/notes";
 import { cn } from "../../lib/cn";
 import { formatBytes } from "../../lib/format";
-import { Markdown } from "../Markdown";
+import { LazyMarkdown } from "../LazyMarkdown";
 import { Button } from "../ui/Button";
 import { Dialog } from "../ui/Dialog";
 import { Spinner } from "../ui/Display";
@@ -202,7 +202,7 @@ function NoteForm({ noteId, initial, onClose }: NoteFormProps) {
             className="mt-2 max-h-[22rem] min-h-40 overflow-y-auto rounded-control border border-zinc-200 p-4 dark:border-zinc-700"
           >
             {body.trim() ? (
-              <Markdown>{body}</Markdown>
+              <LazyMarkdown>{body}</LazyMarkdown>
             ) : (
               <p className="text-sm text-zinc-600 dark:text-zinc-400">Nothing to preview yet.</p>
             )}

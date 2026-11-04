@@ -1,0 +1,5 @@
+# Every page and API answer says "noindex" (a meta tag and the X-Robots-Tag header). Crawlers
+# must be allowed in to read that, so nothing is disallowed here: a leaked share link that a
+# crawler follows is then dropped instead of being listed by its address alone.
+User-agent: *
+Disallow:

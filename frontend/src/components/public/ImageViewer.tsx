@@ -2,6 +2,7 @@ import { ChevronLeft, ChevronRight, Download, X } from "lucide-react";
 import { type KeyboardEvent, useEffect, useRef } from "react";
 
 import type { PublicItem } from "../../api/public";
+import { imageSize } from "../../lib/media";
 import { IconButton } from "../ui/Button";
 
 interface ImageViewerProps {
@@ -98,7 +99,9 @@ export function ImageViewer({
             key={image.id}
             src={fileUrl(image.id)}
             alt={image.title}
-            className="max-h-full max-w-full rounded-lg object-contain"
+            // The real size, so the box is right before the file arrives; CSS still scales it down.
+            {...imageSize(image)}
+            className="h-auto max-h-full w-auto max-w-full rounded-lg object-contain"
           />
           {images.length > 1 && (
             <>

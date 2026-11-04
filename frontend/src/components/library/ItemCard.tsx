@@ -4,6 +4,7 @@ import { type ReactNode, useId, useRef, useState } from "react";
 import { type ItemSummary, thumbnailUrl } from "../../api/items";
 import { cn } from "../../lib/cn";
 import { formatBytes, formatDateTime, formatDuration, formatRelative } from "../../lib/format";
+import { loadingHints, thumbnailSize } from "../../lib/media";
 
 const KIND = {
   image: { label: "Image", icon: ImageIcon },
@@ -18,7 +19,7 @@ function formatLabel(item: ItemSummary): string {
   return subtype === "quicktime" ? "MOV" : subtype.toUpperCase();
 }
 
-function Preview({ item }: { item: ItemSummary }) {
+function Preview({ item, index }: { item: ItemSummary; index: number }) {
   if (item.kind === "note") {
     return (
       // Top padding keeps the text clear of the kind badge.
@@ -40,7 +41,8 @@ function Preview({ item }: { item: ItemSummary }) {
     <img
       src={thumbnailUrl(item.id)}
       alt=""
-      loading="lazy"
+      {...thumbnailSize(item)}
+      {...loadingHints(index)}
       decoding="async"
       // Screens start at the top left (navigation, headlines), so crop from there.
       className="absolute inset-0 size-full object-cover object-left-top"
@@ -50,6 +52,8 @@ function Preview({ item }: { item: ItemSummary }) {
 
 interface ItemCardProps {
   item: ItemSummary;
+  /** Position in the grid: the first few images load right away (see loadingHints). */
+  index?: number;
   /** Opens the item in the viewer; makes the whole preview a button. */
   onOpen?: () => void;
   actions?: ReactNode;
@@ -102,6 +106,7 @@ function RenameField({
 
 export function ItemCard({
   item,
+  index = 0,
   onOpen,
   actions,
   selection,
@@ -129,7 +134,7 @@ export function ItemCard({
       )}
     >
       <div className="relative aspect-[4/3] overflow-hidden bg-zinc-100 dark:bg-zinc-800">
-        <Preview item={item} />
+        <Preview item={item} index={index} />
         {selection ? (
           <>
             {/* The real control covers the preview, so a click anywhere toggles it. */}
@@ -205,9 +210,9 @@ export function ItemCard({
       <div className="p-3">
         {renaming ? (
           <>
-            <h3 id={titleId} className="sr-only">
+            <h2 id={titleId} className="sr-only">
               {item.title}
-            </h3>
+            </h2>
             <RenameField
               title={item.title}
               label={`New title for ${item.title}`}
@@ -218,9 +223,9 @@ export function ItemCard({
             />
           </>
         ) : (
-          <h3 id={titleId} className="truncate text-sm font-medium" title={item.title}>
+          <h2 id={titleId} className="truncate text-sm font-medium" title={item.title}>
             {item.title}
-          </h3>
+          </h2>
         )}
         <p className="mt-1 truncate text-xs text-zinc-600 tabular-nums dark:text-zinc-400">
           {details} ·{" "}
