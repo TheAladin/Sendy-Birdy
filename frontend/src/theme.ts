@@ -5,7 +5,9 @@ const STORAGE_KEY = "sendy-theme";
 
 export type ThemePreference = "system" | "light" | "dark";
 
-const darkQuery = () => window.matchMedia("(prefers-color-scheme: dark)");
+// Missing in jsdom (and very old browsers): treated as a light system theme.
+const darkQuery = (): MediaQueryList | undefined =>
+  window.matchMedia?.("(prefers-color-scheme: dark)");
 
 export function getThemePreference(): ThemePreference {
   try {
@@ -17,7 +19,7 @@ export function getThemePreference(): ThemePreference {
 }
 
 export function applyTheme(preference: ThemePreference) {
-  const dark = preference === "dark" || (preference === "system" && darkQuery().matches);
+  const dark = preference === "dark" || (preference === "system" && darkQuery()?.matches === true);
   document.documentElement.classList.toggle("dark", dark);
 }
 
@@ -37,7 +39,7 @@ export function setThemePreference(preference: ThemePreference) {
 /** Keeps "system" in step with the OS when it switches between light and dark. */
 export function followSystemTheme() {
   applyTheme(getThemePreference());
-  darkQuery().addEventListener("change", () => {
+  darkQuery()?.addEventListener("change", () => {
     if (getThemePreference() === "system") applyTheme("system");
   });
 }
