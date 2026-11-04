@@ -36,3 +36,4 @@ Thumbs.db
 # Personal notes
 *.md
 !README.md
+!docs/self-hosting.md
