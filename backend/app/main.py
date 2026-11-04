@@ -43,7 +43,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app = FastAPI(
         title="Sendy Birdy",
-        version="0.1.0",
+        version="1.0.0",
         # Everything server-side lives under /api; the frontend owns all other paths. The public
         # app publishes no schema: there's no reason to hand visitors a map of the admin API.
         docs_url="/api/docs" if admin else None,
