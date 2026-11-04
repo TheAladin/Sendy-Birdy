@@ -8,7 +8,7 @@ ADMIN_PORT ?= 8000
 PUBLIC_PORT ?= 8001
 BACKUP_DIR ?= backups
 
-.PHONY: help install db-setup db-migrate create-admin seed-demo backup gen-api build start start-admin start-public dev dev-api dev-web check fmt
+.PHONY: help install db-setup db-migrate create-admin seed-demo backup gen-api build start start-admin start-public dev dev-api dev-web check e2e fmt
 
 help: ## List available commands
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "} {printf "  make %-12s %s\n", $$1, $$2}'
@@ -73,6 +73,9 @@ gen-api: ## Regenerate the frontend's API types from the backend's OpenAPI schem
 check: ## Run every linter, type check and test
 	cd $(BACKEND) && uv run ruff check && uv run ruff format --check && uv run pytest
 	cd $(FRONTEND) && npm run lint && npm run typecheck && npm run format:check && npm test
+
+e2e: ## Run the Playwright end-to-end tests on a fresh demo library (wipes sendy_e2e)
+	./scripts/e2e.sh
 
 fmt: ## Fix lint issues where possible and format all code
 	cd $(BACKEND) && uv run ruff check --fix && uv run ruff format

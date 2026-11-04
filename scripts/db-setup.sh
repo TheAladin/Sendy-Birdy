@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Creates the `sendy` role and the `sendy` and `sendy_test` databases on the local PostgreSQL
 # server (plus `sendy_backup_test` and `sendy_restore_test` for the backup tests, which need
-# committed data), and records the connection URLs in .env. Safe to run again: existing
-# databases are kept and the role's password is reset to the one already stored in .env.
+# committed data, and `sendy_e2e` for the end-to-end tests), and records the connection URLs
+# in .env. Safe to run again: existing databases are kept and the role's password is reset to
+# the one already stored in .env.
 set -euo pipefail
 
 ENV_FILE="${ENV_FILE:-.env}"
@@ -49,6 +50,8 @@ SELECT 'CREATE DATABASE sendy_backup_test OWNER sendy'
   WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'sendy_backup_test')\gexec
 SELECT 'CREATE DATABASE sendy_restore_test OWNER sendy'
   WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'sendy_restore_test')\gexec
+SELECT 'CREATE DATABASE sendy_e2e OWNER sendy'
+  WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'sendy_e2e')\gexec
 SQL
 
-echo "PostgreSQL is ready: sendy, sendy_test, sendy_backup_test and sendy_restore_test, owned by sendy."
+echo "PostgreSQL is ready: sendy, sendy_test, sendy_backup_test, sendy_restore_test and sendy_e2e."

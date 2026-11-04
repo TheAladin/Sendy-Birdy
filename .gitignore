@@ -6,6 +6,7 @@
 # Runtime data (uploaded media) and backups of it
 data/
 backups/
+.e2e/
 
 # Python
 __pycache__/

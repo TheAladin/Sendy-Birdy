@@ -14,6 +14,8 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
+    // e2e/ holds the Playwright tests, run separately by `make e2e`.
+    include: ["src/**/*.test.{ts,tsx}"],
     setupFiles: ["./src/test/setup.ts"],
     // Room for several 5 s waits (see src/test/setup.ts) in one test on a slow machine.
     testTimeout: 20_000,
