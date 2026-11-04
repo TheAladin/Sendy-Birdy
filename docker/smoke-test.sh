@@ -10,11 +10,15 @@ ADMIN=http://127.0.0.1:8000
 PUBLIC=http://127.0.0.1:8001
 WORK="$(mktemp -d)"
 compose() { docker compose "$@"; }
+current="start"
+reason=""
 
 cleanup() {
     status=$?
     if [[ $status -ne 0 ]]; then
         compose logs --no-color --tail=100 || true
+        # The logs push the actual error out of sight, so say it again last.
+        echo "Smoke test failed in step \"$current\": ${reason:-a command exited with status $status (see above the logs)}" >&2
     fi
     compose down --volumes --remove-orphans >/dev/null 2>&1 || true
     rm -rf "${WORK:?}"
@@ -22,8 +26,8 @@ cleanup() {
 }
 trap cleanup EXIT
 
-step() { printf '\n== %s\n' "$*"; }
-fail() { echo "FAILED: $*" >&2; exit 1; }
+step() { current="$*"; printf '\n== %s\n' "$*"; }
+fail() { reason="$*"; echo "FAILED: $*" >&2; exit 1; }
 # Prints the HTTP status of a request; extra arguments go to curl.
 status() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
 expect() { [[ "$1" == "$2" ]] || fail "$3: expected $2, got $1"; }
@@ -44,8 +48,11 @@ expect "$(compose ps --all --format '{{.Service}} {{.State}} {{.ExitCode}}' | gr
 step "Only the right things are reachable"
 expect "$(compose port admin 8000)" "127.0.0.1:8000" "admin port binding"
 expect "$(compose port public 8001)" "127.0.0.1:8001" "public port binding"
-# Depending on the compose version, an unpublished port prints nothing, ":0" or an error.
-[[ "$(compose port db 5432 2>/dev/null || true)" =~ ^(:0)?$ ]] || fail "the database has a published port"
+# Asked of Docker itself: what `compose port` prints for an unpublished port changes between
+# compose versions.
+db_ports="$(docker inspect --format '{{json .HostConfig.PortBindings}} {{.HostConfig.PublishAllPorts}}' \
+    "$(compose ps --quiet db)")"
+[[ "$db_ports" =~ ^(\{\}|null)\ false$ ]] || fail "the database has a published port: $db_ports"
 expect "$(compose exec -T admin id -u)" 10001 "app user"
 expect "$(status "$ADMIN/api/docs")" 200 "admin docs"
 expect "$(status "$PUBLIC/api/docs")" 404 "public docs"

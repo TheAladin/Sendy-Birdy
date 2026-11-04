@@ -112,6 +112,8 @@ test("the address restores filters and search after a reload", async () => {
 
   expect(await screen.findByRole("searchbox", { name: "Search titles" })).toHaveValue("release");
   expect(screen.getByRole("link", { name: "Notes" })).toHaveAttribute("aria-current", "page");
+  // The request starts just after the first render, so on a slow machine it may not be out yet.
+  await waitFor(() => expect(requestedUrls(api)).not.toHaveLength(0));
   const url = requestedUrls(api)[0];
   expect([url?.searchParams.get("kind"), url?.searchParams.get("q")]).toEqual(["note", "release"]);
 });
