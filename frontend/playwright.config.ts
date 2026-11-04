@@ -23,6 +23,7 @@ export default defineConfig({
     {
       name: "light",
       use: { ...devices["Desktop Chrome"], colorScheme: "light" },
+      testIgnore: "screenshots.spec.ts",
     },
     {
       // The theme follows the system by default, so this checks every page in dark mode too.
@@ -30,6 +31,18 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"], colorScheme: "dark" },
       testMatch: "accessibility.spec.ts",
     },
+    // README pictures, only with `make screenshots`.
+    ...(process.env.SCREENSHOTS
+      ? (["light", "dark"] as const).map((colorScheme) => ({
+          name: `screenshots-${colorScheme}`,
+          use: {
+            ...devices["Desktop Chrome"],
+            viewport: { width: 1280, height: 800 },
+            colorScheme,
+          },
+          testMatch: "screenshots.spec.ts",
+        }))
+      : []),
   ],
   webServer: [
     {

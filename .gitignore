@@ -37,4 +37,6 @@ Thumbs.db
 # Personal notes
 *.md
 !README.md
+!SECURITY.md
+!CHANGELOG.md
 !docs/self-hosting.md
