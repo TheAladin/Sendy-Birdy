@@ -1,0 +1,137 @@
+# Sendy Birdy with Docker: `docker compose up -d`, then
+#   admin app  http://localhost:8000   (create your account first, see docs/self-hosting.md)
+#   public app http://localhost:8001   (the one a tunnel exposes)
+#
+# Settings can go in a .env file next to this one (all optional): SECRET_KEY, POSTGRES_PASSWORD,
+# PUBLIC_BASE_URL, LOG_RETENTION_DAYS, MAX_UPLOAD_MB, SESSION_DAYS.
+
+name: sendy-birdy
+
+x-app: &app
+  image: sendy-birdy
+  # Only `migrate` builds the image; the apps reuse it instead of building it twice more.
+  pull_policy: never
+  restart: unless-stopped
+  environment: &app-env
+    DATABASE_URL: postgresql+asyncpg://sendy:${POSTGRES_PASSWORD:-sendy}@db:5432/sendy
+    # Empty means "generate one on first start and keep it in the data volume".
+    SECRET_KEY: ${SECRET_KEY:-}
+    PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8001}
+    LOG_RETENTION_DAYS: ${LOG_RETENTION_DAYS:-90}
+    MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-1024}
+    SESSION_DAYS: ${SESSION_DAYS:-7}
+    # A tunnel on the host reaches the apps through Docker's network, not from 127.0.0.1, so
+    # uvicorn must trust its X-Forwarded-For/-Proto from any address. That's only safe because
+    # the ports below are published on 127.0.0.1: keep them that way.
+    FORWARDED_ALLOW_IPS: "*"
+  volumes:
+    - data:/data
+  networks:
+    - default
+    - database
+
+services:
+  db:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sendy
+      # The database is on an internal network with no published port: only the app reaches it.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sendy}
+      POSTGRES_DB: sendy
+    volumes:
+      # PostgreSQL 18 images keep their data in a versioned folder under /var/lib/postgresql.
+      - db:/var/lib/postgresql
+    networks:
+      - database
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "sendy", "-d", "sendy"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  # Runs once per `up`: brings the schema up to date (and creates SECRET_KEY on first start)
+  # before either app starts.
+  migrate:
+    <<: *app
+    build: .
+    pull_policy: build
+    restart: "no"
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  admin:
+    <<: *app
+    environment:
+      <<: *app-env
+      APP_MODE: admin
+    command:
+      [
+        "uvicorn",
+        "app.main:create_app",
+        "--factory",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+      ]
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  public:
+    <<: *app
+    environment:
+      <<: *app-env
+      APP_MODE: public
+    command:
+      [
+        "uvicorn",
+        "app.main:create_app",
+        "--factory",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8001",
+      ]
+    ports:
+      - "127.0.0.1:8001:8001"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      # The public app has no health endpoint (that's admin API); any of its files will do.
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/favicon.svg')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+networks:
+  database:
+    # No route to the outside world, in or out.
+    internal: true
+
+volumes:
+  db:
+  data:

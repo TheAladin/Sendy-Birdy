@@ -1,0 +1,14 @@
+# Allowlist: the image gets only what it needs, never local files like .env or data/.
+*
+!backend/pyproject.toml
+!backend/uv.lock
+!backend/alembic.ini
+!backend/alembic
+!backend/app
+!frontend
+!docker/entrypoint.sh
+frontend/node_modules
+frontend/dist
+frontend/coverage
+**/__pycache__
+**/*.tsbuildinfo

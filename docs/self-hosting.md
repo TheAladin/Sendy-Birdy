@@ -218,6 +218,43 @@ Open the Activity page afterwards: the visit should show your phone's mobile-net
 curl -sI https://homebox.tail1234.ts.net/s/anything | grep -iE 'content-security|strict-transport|x-content-type|referrer|permissions'
 ```
 
+## Alternative: Docker
+
+Instead of steps 1, 3 and 4, you can run everything with Docker: one image for both apps, plus PostgreSQL, from `compose.yaml`. Steps 2, 5, 6 and 7 stay the same, because the apps end up on the same addresses (`127.0.0.1:8000` and `127.0.0.1:8001`).
+
+```bash
+git clone https://github.com/<you>/sendy-birdy.git ~/sendy-birdy
+cd ~/sendy-birdy
+echo "PUBLIC_BASE_URL=https://homebox.tail1234.ts.net" > .env   # optional; see below
+docker compose up -d --build
+docker compose run --rm admin python -m app.cli create-admin
+```
+
+- **What runs:** `db` (PostgreSQL 18), `migrate` (applies migrations, then exits), `admin` and `public`. The apps wait for the migration, and everything restarts on boot as long as Docker does.
+- **Settings** go in a `.env` next to `compose.yaml`, and all are optional: `PUBLIC_BASE_URL`, `LOG_RETENTION_DAYS`, `MAX_UPLOAD_MB`, `SESSION_DAYS`, `POSTGRES_PASSWORD` and `SECRET_KEY`. Without a `SECRET_KEY`, one is generated on the first start and kept in the data volume. If you set `POSTGRES_PASSWORD`, do it before the first start: PostgreSQL only reads it when it creates the database.
+- **Nothing extra is exposed.** Both apps are published on `127.0.0.1` only. PostgreSQL has no published port and sits on an internal network that only the apps can reach. The apps run as an unprivileged user, not root.
+- **Keep the `127.0.0.1:` in front of the ports.** The tunnel's connections reach the containers through Docker's network rather than from localhost, so the apps are set to believe `X-Forwarded-For`/`-Proto` from any address (`FORWARDED_ALLOW_IPS`). That's only safe because nothing outside this machine can connect to them.
+- **Data** lives in two named volumes: `sendy-birdy_db` (the database) and `sendy-birdy_data` (media and the generated secret key). `docker compose down` keeps them; `docker compose down -v` **deletes them**.
+
+Backups work the same way, from inside the admin container. The image includes `pg_dump` 18. Run it as your own user with the image's `sendy` group, so the files in `./backups` belong to you while it can still read the data volume:
+
+```bash
+mkdir -p backups
+docker compose run --rm --user "$(id -u):sendy" -v "$PWD/backups:/backups" admin \
+    python -m app.cli backup /backups
+```
+
+Restore into a fresh stack (the volumes must be empty), with the backup mounted read-only. Backup folders are private to your user, so this one-off command runs as root inside the container and then gives the restored files back to the app's user:
+
+```bash
+docker compose up -d db migrate
+docker compose run --rm --user root -v "$PWD/backups:/backups:ro" admin sh -c \
+    'python -m app.cli restore /backups/sendy-backup-20261103-033000 && chown -R sendy:sendy /data'
+docker compose up -d
+```
+
+To update: `git pull && docker compose up -d --build`. The `migrate` service brings the schema up to date before the apps start again.
+
 ## Backups
 
 `make backup` saves the database and media into a new `sendy-backup-<time>` folder (see the [backup notes](#restoring) below). To run it every night and keep 30 days:
